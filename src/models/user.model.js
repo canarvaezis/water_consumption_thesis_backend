@@ -3,11 +3,13 @@
  * 
  * Estructura del documento:
  * El ID del documento es el UID de Firebase Authentication
+ * El userId está implícito en el ID del documento
+ * 
  * {
  *   name: string
  *   email: string (único, sincronizado con Firebase Auth)
- *   nickname: string (opcional)
- *   avatarUrl: string (opcional)
+ *   nickname: string (opcional, null por defecto)
+ *   avatarUrl: string (opcional, null por defecto)
  *   createdAt: Timestamp
  *   updatedAt: Timestamp
  * }
@@ -43,7 +45,7 @@ export class UserModel {
       return null;
     }
     
-    return userDoc.data();
+    return { uid: userDoc.id, ...userDoc.data() };
   }
 
   /**

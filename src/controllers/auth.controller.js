@@ -9,13 +9,65 @@ import { asyncHandler } from '../middleware/error.middleware.js';
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
+  let firebaseUser = null;
+  let uid = null;
+
   try {
-    // Crear usuario en Firebase Authentication
-    const firebaseUser = await auth.createUser({
+    // Verificar si el usuario ya existe en Firebase Auth por email
+    try {
+      const existingUser = await auth.getUserByEmail(email);
+      uid = existingUser.uid;
+      firebaseUser = existingUser;
+      
+      // Si existe en Auth, verificar si ya tiene documento en Firestore
+      const existingFirestoreUser = await UserModel.findById(uid);
+      if (existingFirestoreUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'El email ya está registrado',
+        });
+      }
+      
+      // Si existe en Auth pero no en Firestore, crear solo el documento
+      const userData = {
+        name,
+        email,
+        nickname: null,
+        avatarUrl: null,
+      };
+      
+      const user = await UserModel.create(uid, userData);
+      const wallet = await WalletModel.create(uid, 0);
+      
+      return res.status(201).json({
+        success: true,
+        message: 'Usuario registrado exitosamente',
+        data: {
+          user: {
+            userId: uid,
+            ...user,
+          },
+          wallet: {
+            walletId: wallet.id,
+            ...wallet,
+          },
+        },
+      });
+    } catch (authError) {
+      // Si el error es que no existe el usuario, continuar con la creación
+      if (authError.code !== 'auth/user-not-found') {
+        throw authError;
+      }
+    }
+
+    // Si no existe en Auth, crear usuario nuevo
+    firebaseUser = await auth.createUser({
       email,
       password,
       displayName: name,
     });
+
+    uid = firebaseUser.uid;
 
     // Crear documento en Firestore con el UID de Firebase Auth
     const userData = {
@@ -25,29 +77,48 @@ export const register = asyncHandler(async (req, res) => {
       avatarUrl: null,
     };
 
-    const user = await UserModel.create(firebaseUser.uid, userData);
+    // Guardar usuario en Firestore
+    const user = await UserModel.create(uid, userData);
 
     // Crear billetera como subcolección
-    await WalletModel.create(firebaseUser.uid, 0);
+    const wallet = await WalletModel.create(uid, 0);
 
     res.status(201).json({
       success: true,
       message: 'Usuario registrado exitosamente',
       data: {
         user: {
-          uid: firebaseUser.uid,
+          userId: uid, // UID de Firebase Auth (ID del documento)
           ...user,
+        },
+        wallet: {
+          walletId: wallet.id, // ID del documento en la subcolección
+          ...wallet,
         },
       },
     });
   } catch (error) {
-    // Si el email ya existe en Firebase Auth
+    // Si el email ya existe en Firebase Auth (caso edge)
     if (error.code === 'auth/email-already-exists') {
       return res.status(400).json({
         success: false,
         message: 'El email ya está registrado',
       });
     }
+    
+    // Si hay error al crear en Firestore, eliminar el usuario de Auth (solo si lo creamos nosotros)
+    if (firebaseUser && firebaseUser.uid && error.code !== 'auth/email-already-exists') {
+      try {
+        // Verificar que el usuario fue creado en este flujo (no existía antes)
+        const userInFirestore = await UserModel.findById(firebaseUser.uid);
+        if (!userInFirestore) {
+          await auth.deleteUser(firebaseUser.uid);
+        }
+      } catch (deleteError) {
+        console.error('Error al limpiar usuario de Auth:', deleteError);
+      }
+    }
+    
     throw error;
   }
 });

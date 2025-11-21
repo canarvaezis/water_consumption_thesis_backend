@@ -4,6 +4,9 @@
  * Estructura: Subcolección de users
  * users/{uid}/wallet/{walletId}
  * 
+ * El userId está implícito en la ruta (uid del documento padre)
+ * El walletId es el ID del documento en la subcolección
+ * 
  * Estructura del documento:
  * {
  *   balance: number (puntos/monedas)
