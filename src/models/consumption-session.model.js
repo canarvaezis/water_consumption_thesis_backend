@@ -14,6 +14,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const COLLECTION_NAME = 'consumptionSessions';
 
@@ -28,9 +29,13 @@ export class ConsumptionSessionModel {
       userId: sessionData.userId,
       householdId: sessionData.householdId,
       formType: sessionData.formType,
-      consumptionDate: sessionData.consumptionDate || new Date(),
+      consumptionDate: sessionData.consumptionDate 
+        ? (sessionData.consumptionDate instanceof Date 
+          ? Timestamp.fromDate(sessionData.consumptionDate) 
+          : sessionData.consumptionDate)
+        : Timestamp.now(),
       totalEstimatedLiters: sessionData.totalEstimatedLiters || 0,
-      createdAt: new Date(),
+      createdAt: Timestamp.now(),
     };
     
     await sessionRef.set(session);
@@ -79,14 +84,54 @@ export class ConsumptionSessionModel {
   }
 
   /**
-   * Obtener sesiones por rango de fechas
+   * Obtener sesión del día actual por usuario
    */
-  static async findByDateRange(userId, startDate, endDate) {
+  static async findByUserAndDate(userId, date) {
+    // Normalizar fecha a inicio del día
+    const dateObj = date instanceof Date ? date : new Date(date);
+    const startOfDay = new Date(dateObj);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(dateObj);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    // Convertir a Timestamps de Firestore para la consulta
+    const startTimestamp = Timestamp.fromDate(startOfDay);
+    const endTimestamp = Timestamp.fromDate(endOfDay);
+    
     const snapshot = await db
       .collection(COLLECTION_NAME)
       .where('userId', '==', userId)
-      .where('consumptionDate', '>=', startDate)
-      .where('consumptionDate', '<=', endDate)
+      .where('consumptionDate', '>=', startTimestamp)
+      .where('consumptionDate', '<=', endTimestamp)
+      .limit(1)
+      .get();
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() };
+  }
+
+  /**
+   * Obtener sesiones por rango de fechas
+   */
+  static async findByDateRange(userId, startDate, endDate) {
+    // Convertir fechas a Timestamps si son Date objects
+    const start = startDate instanceof Date 
+      ? Timestamp.fromDate(startDate) 
+      : (startDate instanceof Timestamp ? startDate : Timestamp.fromDate(new Date(startDate)));
+    const end = endDate instanceof Date 
+      ? Timestamp.fromDate(endDate) 
+      : (endDate instanceof Timestamp ? endDate : Timestamp.fromDate(new Date(endDate)));
+    
+    const snapshot = await db
+      .collection(COLLECTION_NAME)
+      .where('userId', '==', userId)
+      .where('consumptionDate', '>=', start)
+      .where('consumptionDate', '<=', end)
       .orderBy('consumptionDate', 'asc')
       .get();
     
@@ -100,7 +145,7 @@ export class ConsumptionSessionModel {
     const sessionRef = db.collection(COLLECTION_NAME).doc(sessionId);
     await sessionRef.set({
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     }, { merge: true });
     
     return await this.findById(sessionId);

@@ -8,13 +8,14 @@
  *   userConsumptionDetailId: string (auto-generado)
  *   consumptionSessionId: string
  *   consumptionItemId: string
- *   frequencyPerWeek: number
- *   estimatedLiters: number
+ *   timesPerDay: number (veces que hizo la actividad ese día)
+ *   estimatedLiters: number (total de litros de ese item ese día)
  *   createdAt: Timestamp
  * }
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export class UserConsumptionDetailModel {
   /**
@@ -31,9 +32,9 @@ export class UserConsumptionDetailModel {
       userConsumptionDetailId: detailRef.id,
       consumptionSessionId: sessionId,
       consumptionItemId: detailData.consumptionItemId,
-      frequencyPerWeek: detailData.frequencyPerWeek,
+      timesPerDay: detailData.timesPerDay || 1,
       estimatedLiters: detailData.estimatedLiters,
-      createdAt: new Date(),
+      createdAt: Timestamp.now(),
     };
     
     await detailRef.set(detail);
@@ -65,7 +66,7 @@ export class UserConsumptionDetailModel {
     
     await detailRef.set({
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     }, { merge: true });
     
     const updatedDoc = await detailRef.get();
