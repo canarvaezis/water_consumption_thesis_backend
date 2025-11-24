@@ -14,6 +14,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export class UserSetupItemModel {
   /**
@@ -33,7 +34,7 @@ export class UserSetupItemModel {
       
       await setupItemRef.update({
         hasItem: setupItemData.hasItem,
-        updatedAt: new Date(),
+        updatedAt: Timestamp.now(),
       });
       
       const updatedDoc = await setupItemRef.get();
@@ -51,7 +52,7 @@ export class UserSetupItemModel {
         userId,
         consumptionItemId: setupItemData.consumptionItemId,
         hasItem: setupItemData.hasItem,
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
       };
       
       await setupItemRef.set(setupItem);

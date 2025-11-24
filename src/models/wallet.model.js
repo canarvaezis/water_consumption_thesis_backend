@@ -16,6 +16,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const SUBCOLLECTION_NAME = 'wallet';
 
@@ -27,8 +28,8 @@ export class WalletModel {
     const walletRef = db.collection('users').doc(uid).collection(SUBCOLLECTION_NAME).doc();
     const wallet = {
       balance: initialBalance,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     };
     
     await walletRef.set(wallet);
@@ -85,7 +86,7 @@ export class WalletModel {
     
     await walletRef.update({
       balance: newBalance,
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     });
     
     return await this.findById(uid, walletId);

@@ -14,6 +14,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const COLLECTION_NAME = 'storeItems';
 
@@ -30,7 +31,7 @@ export class StoreItemModel {
       description: itemData.description,
       price: itemData.price,
       assetUrl: itemData.assetUrl,
-      createdAt: new Date(),
+      createdAt: Timestamp.now(),
     };
     
     await itemRef.set(item);
@@ -77,7 +78,7 @@ export class StoreItemModel {
     const itemRef = db.collection(COLLECTION_NAME).doc(itemId);
     await itemRef.set({
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     }, { merge: true });
     
     return await this.findById(itemId);

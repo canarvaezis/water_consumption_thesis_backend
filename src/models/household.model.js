@@ -12,6 +12,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
 const COLLECTION_NAME = 'households';
@@ -48,8 +49,8 @@ export class HouseholdModel {
       householdId: householdRef.id,
       householdName: householdData.householdName,
       inviteCode,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     };
     
     await householdRef.set(household);
@@ -94,7 +95,7 @@ export class HouseholdModel {
     const householdRef = db.collection(COLLECTION_NAME).doc(householdId);
     await householdRef.set({
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     }, { merge: true });
     
     return await this.findById(householdId);

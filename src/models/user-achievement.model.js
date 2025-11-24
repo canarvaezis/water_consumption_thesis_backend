@@ -13,6 +13,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export class UserAchievementModel {
   /**
@@ -29,7 +30,7 @@ export class UserAchievementModel {
       userAchievementId: userAchievementRef.id,
       userId,
       achievementId,
-      unlockedAt: new Date(),
+      unlockedAt: Timestamp.now(),
     };
     
     await userAchievementRef.set(userAchievement);

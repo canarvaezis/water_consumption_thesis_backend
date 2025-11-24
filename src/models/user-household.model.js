@@ -14,6 +14,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export class UserHouseholdModel {
   /**
@@ -31,7 +32,7 @@ export class UserHouseholdModel {
       userId,
       householdId,
       role,
-      joinedAt: new Date(),
+      joinedAt: Timestamp.now(),
     };
     
     await userHouseholdRef.set(userHousehold);

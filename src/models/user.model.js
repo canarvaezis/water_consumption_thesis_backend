@@ -10,12 +10,14 @@
  *   email: string (único, sincronizado con Firebase Auth)
  *   nickname: string (opcional, null por defecto)
  *   avatarUrl: string (opcional, null por defecto)
+ *   stratum: number (1-6, por defecto 3)
  *   createdAt: Timestamp
  *   updatedAt: Timestamp
  * }
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const COLLECTION_NAME = 'users';
 
@@ -27,8 +29,9 @@ export class UserModel {
     const userRef = db.collection(COLLECTION_NAME).doc(uid);
     const user = {
       ...userData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      stratum: userData.stratum || 3, // Estrato por defecto
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     };
     
     await userRef.set(user);
@@ -73,7 +76,7 @@ export class UserModel {
     const userRef = db.collection(COLLECTION_NAME).doc(userId);
     await userRef.update({
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     });
     
     return await this.findById(userId);

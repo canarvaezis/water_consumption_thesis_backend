@@ -16,6 +16,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export class UserRecommendationModel {
   /**
@@ -35,7 +36,7 @@ export class UserRecommendationModel {
       description: recommendationData.description || null,
       type: recommendationData.type || 'tip',
       seen: false,
-      createdAt: new Date(),
+      createdAt: Timestamp.now(),
     };
     
     await recommendationRef.set(recommendation);

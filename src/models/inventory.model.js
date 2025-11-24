@@ -13,6 +13,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export class InventoryModel {
   /**
@@ -29,7 +30,7 @@ export class InventoryModel {
       inventoryId: inventoryRef.id,
       walletId,
       storeItemId,
-      purchasedAt: new Date(),
+      purchasedAt: Timestamp.now(),
     };
     
     await inventoryRef.set(inventoryItem);

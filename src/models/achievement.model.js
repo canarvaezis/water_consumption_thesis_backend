@@ -13,6 +13,7 @@
  */
 
 import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const COLLECTION_NAME = 'achievements';
 
@@ -28,7 +29,7 @@ export class AchievementModel {
       description: achievementData.description || null,
       reward: achievementData.reward,
       iconUrl: achievementData.iconUrl,
-      createdAt: new Date(),
+      createdAt: Timestamp.now(),
     };
     
     await achievementRef.set(achievement);
@@ -63,7 +64,7 @@ export class AchievementModel {
     const achievementRef = db.collection(COLLECTION_NAME).doc(achievementId);
     await achievementRef.set({
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: Timestamp.now(),
     }, { merge: true });
     
     return await this.findById(achievementId);
