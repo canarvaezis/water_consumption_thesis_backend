@@ -152,14 +152,44 @@ export const login = asyncHandler(async (req, res) => {
       });
     }
 
+    // Obtener wallet del usuario
+    const wallet = await WalletModel.findByUserId(uid);
+
+    // Convertir Timestamps a fechas legibles
+    const userData = {
+      uid,
+      ...user,
+      createdAt: user.createdAt?.toDate 
+        ? user.createdAt.toDate() 
+        : user.createdAt,
+      updatedAt: user.updatedAt?.toDate 
+        ? user.updatedAt.toDate() 
+        : user.updatedAt,
+    };
+
+    // Preparar datos del wallet
+    const walletData = wallet ? {
+      walletId: wallet.id,
+      balance: wallet.balance || 0,
+      createdAt: wallet.createdAt?.toDate 
+        ? wallet.createdAt.toDate() 
+        : wallet.createdAt,
+      updatedAt: wallet.updatedAt?.toDate 
+        ? wallet.updatedAt.toDate() 
+        : wallet.updatedAt,
+    } : {
+      walletId: null,
+      balance: 0,
+      createdAt: null,
+      updatedAt: null,
+    };
+
     res.json({
       success: true,
       message: 'Inicio de sesión exitoso',
       data: {
-        user: {
-          uid,
-          ...user,
-        },
+        user: userData,
+        wallet: walletData,
       },
     });
   } catch (error) {
@@ -183,13 +213,71 @@ export const getProfile = asyncHandler(async (req, res) => {
     });
   }
 
+  // Obtener wallet del usuario
+  const wallet = await WalletModel.findByUserId(req.user.uid);
+
+  // Convertir Timestamps a fechas legibles
+  const userData = {
+    uid: req.user.uid,
+    ...user,
+    createdAt: user.createdAt?.toDate 
+      ? user.createdAt.toDate() 
+      : user.createdAt,
+    updatedAt: user.updatedAt?.toDate 
+      ? user.updatedAt.toDate() 
+      : user.updatedAt,
+  };
+
+  // Preparar datos del wallet
+  const walletData = wallet ? {
+    walletId: wallet.id,
+    balance: wallet.balance || 0,
+    createdAt: wallet.createdAt?.toDate 
+      ? wallet.createdAt.toDate() 
+      : wallet.createdAt,
+    updatedAt: wallet.updatedAt?.toDate 
+      ? wallet.updatedAt.toDate() 
+      : wallet.updatedAt,
+  } : {
+    walletId: null,
+    balance: 0,
+    createdAt: null,
+    updatedAt: null,
+  };
+
   res.json({
     success: true,
     data: {
-      user: {
-        uid: req.user.uid,
-        ...user,
+      user: userData,
+      wallet: walletData,
+    },
+  });
+});
+
+/**
+ * Obtener balance del usuario (endpoint separado para actualizaciones rápidas)
+ */
+export const getBalance = asyncHandler(async (req, res) => {
+  const wallet = await WalletModel.findByUserId(req.user.uid);
+
+  if (!wallet) {
+    return res.json({
+      success: true,
+      data: {
+        walletId: null,
+        balance: 0,
       },
+    });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      walletId: wallet.id,
+      balance: wallet.balance || 0,
+      updatedAt: wallet.updatedAt?.toDate 
+        ? wallet.updatedAt.toDate() 
+        : wallet.updatedAt,
     },
   });
 });

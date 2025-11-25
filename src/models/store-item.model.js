@@ -4,11 +4,12 @@
  * Estructura del documento:
  * {
  *   storeItemId: string (auto-generado)
- *   storeCategoryId: string
+ *   category: string ("avatar" | "nickname")
  *   name: string
  *   description: string
  *   price: number (puntos)
- *   assetUrl: string
+ *   asset_url: string (URL del asset en Firebase Storage)
+ *   default: boolean (si es item por defecto/gratis)
  *   createdAt: Timestamp
  * }
  */
@@ -16,7 +17,7 @@
 import { db } from '../config/firebase.js';
 import { Timestamp } from 'firebase-admin/firestore';
 
-const COLLECTION_NAME = 'storeItems';
+const COLLECTION_NAME = 'Store_item';
 
 export class StoreItemModel {
   /**
@@ -52,9 +53,21 @@ export class StoreItemModel {
   }
 
   /**
-   * Obtener items por categoría
+   * Obtener items por categoría (category: "avatar" | "nickname")
    */
-  static async findByCategory(categoryId) {
+  static async findByCategory(category) {
+    const snapshot = await db
+      .collection(COLLECTION_NAME)
+      .where('category', '==', category)
+      .get();
+    
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+
+  /**
+   * Obtener items por categoría antigua (storeCategoryId) - compatibilidad
+   */
+  static async findByCategoryId(categoryId) {
     const snapshot = await db
       .collection(COLLECTION_NAME)
       .where('storeCategoryId', '==', categoryId)

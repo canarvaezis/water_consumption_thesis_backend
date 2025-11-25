@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { register, login, getProfile } from '../controllers/auth.controller.js';
+import { register, login, getProfile, getBalance } from '../controllers/auth.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { validators, validate } from '../utils/validation.utils.js';
 
@@ -124,6 +124,25 @@ router.post(
  *                   properties:
  *                     user:
  *                       $ref: '#/components/schemas/User'
+ *                     wallet:
+ *                       type: object
+ *                       properties:
+ *                         walletId:
+ *                           type: string
+ *                           nullable: true
+ *                           description: ID de la billetera
+ *                         balance:
+ *                           type: number
+ *                           description: Balance actual en puntos
+ *                           example: 150
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *                           nullable: true
+ *                         updatedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           nullable: true
  *       401:
  *         description: No autorizado - Token inválido o expirado
  *         content:
@@ -141,6 +160,46 @@ router.post(
  *         description: Usuario no encontrado
  */
 router.get('/profile', authenticateToken, getProfile);
+
+/**
+ * @swagger
+ * /api/auth/balance:
+ *   get:
+ *     summary: Obtener balance del usuario
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Balance del usuario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     walletId:
+ *                       type: string
+ *                       nullable: true
+ *                       description: ID de la billetera
+ *                     balance:
+ *                       type: number
+ *                       description: Balance actual en puntos
+ *                       example: 150
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                       description: Fecha de última actualización
+ *       401:
+ *         description: No autorizado - Token inválido o expirado
+ */
+router.get('/balance', authenticateToken, getBalance);
 
 export default router;
 

@@ -1,7 +1,7 @@
 /**
  * Modelo de Inventario para Firestore
  * 
- * Se almacena como subcolección en wallets/{walletId}/inventory
+ * Se almacena como subcolección en users/{uid}/wallet/{walletId}/inventory
  * 
  * Estructura del documento:
  * {
@@ -18,10 +18,15 @@ import { Timestamp } from 'firebase-admin/firestore';
 export class InventoryModel {
   /**
    * Agregar item al inventario
+   * @param {string} uid - UID del usuario
+   * @param {string} walletId - ID de la billetera
+   * @param {string} storeItemId - ID del item de la tienda
    */
-  static async addItem(walletId, storeItemId) {
+  static async addItem(uid, walletId, storeItemId) {
     const inventoryRef = db
-      .collection('wallets')
+      .collection('users')
+      .doc(uid)
+      .collection('wallet')
       .doc(walletId)
       .collection('inventory')
       .doc();
@@ -39,24 +44,39 @@ export class InventoryModel {
 
   /**
    * Obtener inventario de una billetera
+   * @param {string} uid - UID del usuario
+   * @param {string} walletId - ID de la billetera
    */
-  static async getInventoryByWalletId(walletId) {
+  static async getInventoryByWalletId(uid, walletId) {
     const snapshot = await db
-      .collection('wallets')
+      .collection('users')
+      .doc(uid)
+      .collection('wallet')
       .doc(walletId)
       .collection('inventory')
       .orderBy('purchasedAt', 'desc')
       .get();
     
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data(),
+      purchasedAt: doc.data().purchasedAt?.toDate 
+        ? doc.data().purchasedAt.toDate() 
+        : doc.data().purchasedAt,
+    }));
   }
 
   /**
    * Verificar si un item está en el inventario
+   * @param {string} uid - UID del usuario
+   * @param {string} walletId - ID de la billetera
+   * @param {string} storeItemId - ID del item de la tienda
    */
-  static async hasItem(walletId, storeItemId) {
+  static async hasItem(uid, walletId, storeItemId) {
     const snapshot = await db
-      .collection('wallets')
+      .collection('users')
+      .doc(uid)
+      .collection('wallet')
       .doc(walletId)
       .collection('inventory')
       .where('storeItemId', '==', storeItemId)
@@ -68,10 +88,15 @@ export class InventoryModel {
 
   /**
    * Eliminar item del inventario
+   * @param {string} uid - UID del usuario
+   * @param {string} walletId - ID de la billetera
+   * @param {string} inventoryId - ID del item del inventario
    */
-  static async removeItem(walletId, inventoryId) {
+  static async removeItem(uid, walletId, inventoryId) {
     await db
-      .collection('wallets')
+      .collection('users')
+      .doc(uid)
+      .collection('wallet')
       .doc(walletId)
       .collection('inventory')
       .doc(inventoryId)

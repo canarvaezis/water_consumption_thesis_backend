@@ -11,6 +11,8 @@
  *   nickname: string (opcional, null por defecto)
  *   avatarUrl: string (opcional, null por defecto)
  *   stratum: number (1-6, por defecto 3)
+ *   dailyGoal: number (opcional, meta diaria en litros, null por defecto)
+ *   monthlyGoal: number (opcional, meta mensual en litros, null por defecto)
  *   createdAt: Timestamp
  *   updatedAt: Timestamp
  * }

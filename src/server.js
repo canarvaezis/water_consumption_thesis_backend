@@ -10,6 +10,8 @@ import { swaggerSpec, swaggerUi } from './config/swagger.js';
 // Importar rutas
 import authRoutes from './routes/auth.routes.js';
 import consumptionRoutes from './routes/consumption.routes.js';
+import goalsRoutes from './routes/goals.routes.js';
+import profileCustomizationRoutes from './routes/profile-customization.routes.js';
 // import userRoutes from './routes/user.routes.js';
 
 dotenv.config();
@@ -78,6 +80,8 @@ app.get('/health', (req, res) => {
 // Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/consumption', consumptionRoutes);
+app.use('/api/goals', goalsRoutes);
+app.use('/api/profile', profileCustomizationRoutes);
 // app.use('/api/users', userRoutes);
 
 // Manejo de rutas no encontradas
