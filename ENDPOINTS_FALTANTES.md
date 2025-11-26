@@ -64,6 +64,23 @@
 - ✅ `GET /api/store/wallet/transactions` - Historial de transacciones
 - ✅ `POST /api/store/wallet/add-points` - Agregar puntos (admin/testing)
 
+#### **Gestión de Usuario** (`/api/users`)
+- ✅ `PUT /api/users/profile` - Actualizar perfil (nombre)
+- ✅ `PUT /api/users/password` - Cambiar contraseña
+- ✅ `DELETE /api/users/account` - Eliminar cuenta
+- ✅ `GET /api/users/activity` - Actividad reciente del usuario
+- ✅ `GET /api/users/settings` - Obtener configuración del usuario
+- ✅ `PUT /api/users/settings` - Actualizar configuración
+
+#### **Logros** (`/api/achievements`)
+- ✅ `GET /api/achievements` - Listar todos los logros disponibles
+- ✅ `GET /api/achievements/:achievementId` - Obtener logro por ID
+- ✅ `GET /api/achievements/category/:category` - Logros por categoría
+- ✅ `GET /api/achievements/my-achievements` - Logros desbloqueados por el usuario
+- ✅ `GET /api/achievements/progress` - Progreso de logros (cuáles están cerca)
+- ✅ `POST /api/achievements/:achievementId/claim` - Reclamar recompensa de logro
+- ✅ `POST /api/achievements/evaluate` - Forzar evaluación de logros (admin/testing)
+
 #### **Health**
 - ✅ `GET /health` - Estado del servidor
 
@@ -83,28 +100,6 @@
 **Estado:** ✅ **COMPLETADO** - Todos los endpoints principales y opcionales están implementados
 
 ---
-
-### 🏆 **2. LOGROS (Achievements)** - `/api/achievements`
-
-**Modelos existentes:**
-- `AchievementModel` ✅
-- `UserAchievementModel` ✅
-
-**Endpoints necesarios:**
-
-#### **Logros Disponibles**
-- ❌ `GET /api/achievements` - Listar todos los logros disponibles
-- ❌ `GET /api/achievements/:achievementId` - Obtener logro por ID
-- ❌ `GET /api/achievements/category/:category` - Logros por categoría
-
-#### **Logros del Usuario**
-- ❌ `GET /api/achievements/my-achievements` - Logros desbloqueados por el usuario
-- ❌ `GET /api/achievements/progress` - Progreso de logros (cuáles están cerca)
-- ❌ `POST /api/achievements/:achievementId/claim` - Reclamar recompensa de logro
-
-#### **Evaluación Automática**
-- ⚠️ Nota: La evaluación de logros debería ser automática al registrar consumo, pero podría necesitar:
-- ❌ `POST /api/achievements/evaluate` - Forzar evaluación de logros (admin/testing)
 
 ---
 
@@ -177,17 +172,6 @@
 
 ---
 
-### 👤 **8. GESTIÓN DE USUARIO** - `/api/users`
-
-**Endpoints adicionales:**
-
-- ❌ `PUT /api/users/profile` - Actualizar perfil (nombre, email, etc.)
-- ❌ `PUT /api/users/password` - Cambiar contraseña
-- ❌ `DELETE /api/users/account` - Eliminar cuenta
-- ❌ `GET /api/users/activity` - Actividad reciente del usuario
-- ❌ `GET /api/users/settings` - Obtener configuración del usuario
-- ❌ `PUT /api/users/settings` - Actualizar configuración
-
 ---
 
 ## 🎯 Prioridades de Implementación
@@ -199,10 +183,11 @@
    - ✅ `POST /api/store/purchase` - Comprar items
    - ✅ `GET /api/store/inventory` - Ver inventario
 
-2. **Logros (Achievements)**
-   - `GET /api/achievements` - Listar logros
-   - `GET /api/achievements/my-achievements` - Logros del usuario
-   - Evaluación automática al registrar consumo
+2. ~~**Logros (Achievements)**~~ ✅ **COMPLETADO**
+   - ✅ `GET /api/achievements` - Listar logros
+   - ✅ `GET /api/achievements/my-achievements` - Logros del usuario
+   - ✅ Evaluación de logros implementada
+   - ✅ Sistema de recompensas automático
 
 3. **Estrato**
    - `GET /api/stratum` - Obtener estrato
@@ -226,8 +211,12 @@
 7. **Setup Items**
    - Gestión de configuración avanzada
 
-8. **Gestión de Usuario Avanzada**
-   - Actualización de perfil, configuración
+8. ~~**Gestión de Usuario Avanzada**~~ ✅ **COMPLETADO**
+   - ✅ Actualización de perfil
+   - ✅ Cambio de contraseña
+   - ✅ Eliminación de cuenta
+   - ✅ Actividad del usuario
+   - ✅ Configuración de usuario
 
 ---
 
@@ -235,10 +224,10 @@
 
 1. **Evaluación Automática**: Los logros y recomendaciones deberían evaluarse automáticamente cuando se registra consumo, no necesariamente requieren endpoints manuales.
 
-2. **Sistema de Puntos**: El sistema de puntos ya está parcialmente implementado (wallet), pero falta la lógica de:
-   - Ganar puntos por completar misiones/logros
-   - Gastar puntos en la tienda
-   - Historial de transacciones
+2. **Sistema de Puntos**: El sistema de puntos está completamente implementado:
+   - ✅ Gastar puntos en la tienda
+   - ✅ Historial de transacciones
+   - ✅ Ganar puntos por completar logros (implementado con sistema de logros)
 
 3. **Estrato**: El estrato se usa para calcular costos, pero no hay forma de que el usuario lo actualice desde la API.
 
@@ -246,9 +235,20 @@
    - ✅ Endpoints para listar items y categorías
    - ✅ Endpoint para comprar items
    - ✅ Gestión de inventario
-   - ⚠️ Pendiente: Historial de transacciones (opcional)
+   - ✅ Historial de transacciones
 
-5. **Logros**: Los modelos existen pero no hay endpoints ni lógica de evaluación.
+5. ~~**Gestión de Usuario**~~: ✅ **COMPLETADO** - Todos los endpoints están implementados:
+   - ✅ Actualización de perfil
+   - ✅ Cambio de contraseña
+   - ✅ Eliminación de cuenta
+   - ✅ Actividad del usuario
+   - ✅ Configuración de usuario (notificaciones, privacidad, preferencias)
+
+6. ~~**Logros**~~: ✅ **COMPLETADO** - Todos los endpoints y lógica de evaluación implementados:
+   - ✅ Endpoints para listar y obtener logros
+   - ✅ Sistema de evaluación automática
+   - ✅ Reclamar recompensas
+   - ✅ Progreso de logros
 
 ---
 
@@ -257,19 +257,27 @@
 | Categoría | Endpoints Faltantes | Prioridad | Estado |
 |-----------|---------------------|-----------|--------|
 | ~~**Tienda**~~ | ~~10 endpoints~~ → 0 | ~~🔴 Alta~~ | ✅ **COMPLETADO** |
-| **Logros** | 5 endpoints | 🔴 Alta | ❌ Pendiente |
+| ~~**Gestión Usuario**~~ | ~~6 endpoints~~ → 0 | ~~🟢 Baja~~ | ✅ **COMPLETADO** |
+| ~~**Logros**~~ | ~~7 endpoints~~ → 0 | ~~🔴 Alta~~ | ✅ **COMPLETADO** |
 | **Estrato** | 3 endpoints | 🔴 Alta | ❌ Pendiente |
 | **Recomendaciones** | 5 endpoints | 🟡 Media | ❌ Pendiente |
 | **Notificaciones** | 5 endpoints | 🟡 Media | ❌ Pendiente |
 | **Setup Items** | 4 endpoints | 🟢 Baja | ❌ Pendiente |
 | **Estadísticas Avanzadas** | 4 endpoints | 🟢 Baja | ❌ Pendiente |
-| **Gestión Usuario** | 5 endpoints | 🟢 Baja | ❌ Pendiente |
-| **TOTAL** | **29 endpoints** | | |
+| **TOTAL** | **21 endpoints** | | |
 
 ---
 
 **Última actualización:** 
 - ✅ Tienda completada (10 endpoints implementados, incluyendo transacciones e items destacados)
 - ✅ Modelo de transacciones creado (`WalletTransactionModel`)
+- ✅ Gestión de Usuario completada (6 endpoints implementados)
+  - Actualización de perfil, cambio de contraseña, eliminación de cuenta
+  - Actividad del usuario y configuración (notificaciones, privacidad, preferencias)
+- ✅ Logros completados (7 endpoints implementados)
+  - Listar y obtener logros, logros por categoría
+  - Logros del usuario, progreso de logros
+  - Reclamar recompensas, evaluación automática
+  - Sistema de puntos integrado con recompensas
 - Análisis basado en modelos y servicios existentes en el código.
 
