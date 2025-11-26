@@ -20,6 +20,7 @@ import recommendationRoutes from './routes/recommendation.routes.js';
 import stratumRoutes from './routes/stratum.routes.js';
 import setupRoutes from './routes/setup.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import advancedStatisticsRoutes from './routes/advanced-statistics.routes.js';
 
 dotenv.config();
 
@@ -97,6 +98,7 @@ app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/stratum', stratumRoutes);
 app.use('/api/setup', setupRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/statistics', advancedStatisticsRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
