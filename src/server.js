@@ -202,13 +202,16 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json(response);
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  logger.info(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  logger.info(`📝 Entorno: ${env.nodeEnv}`);
-  logger.info(`🔒 Rate limiting: Activado`);
-  logger.info(`🛡️  Seguridad: Helmet, CORS, Sanitización activos`);
-});
+// Iniciar servidor solo si no estamos en modo test
+// En tests, el servidor se inicia mediante supertest
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    logger.info(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+    logger.info(`📝 Entorno: ${env.nodeEnv}`);
+    logger.info(`🔒 Rate limiting: Activado`);
+    logger.info(`🛡️  Seguridad: Helmet, CORS, Sanitización activos`);
+  });
+}
 
 export default app;
 

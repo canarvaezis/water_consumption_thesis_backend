@@ -5,24 +5,23 @@ package-lock.json
 # Environment variables
 .env
 .env.local
-.env.*.local
-
-# Firebase
-firebase-service-account.json
-*-firebase-adminsdk-*.json
-config/firebase-service-account.json
-config/*-firebase-adminsdk-*.json
+.env.test
+.env.production
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# OS
-.DS_Store
-Thumbs.db
+# Firebase
+config/firebase-service-account.json
+.firebase/
+
+# Testing
+coverage/
+.nyc_output/
 
 # IDE
 .vscode/
@@ -31,7 +30,10 @@ Thumbs.db
 *.swo
 *~
 
+# OS
+.DS_Store
+Thumbs.db
+
 # Build
 dist/
 build/
-
