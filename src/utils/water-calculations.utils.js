@@ -13,7 +13,7 @@ export const litersToCubicMeters = (liters) => {
  * Calcular costo según tarifas de Emcali por estrato
  * Nota: Estos valores deben actualizarse según las tarifas vigentes
  */
-const EMCALI_RATES = {
+export const EMCALI_RATES = {
   1: { // Estrato 1
     block1: { max: 20, price: 0 }, // Primeros 20 m³ son gratuitos
     block2: { max: 40, price: 2000 }, // 21-40 m³
