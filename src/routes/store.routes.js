@@ -363,5 +363,189 @@ router.get(
   StoreController.hasItem
 );
 
+/**
+ * @swagger
+ * /api/store/items/featured:
+ *   get:
+ *     summary: Obtener items destacados de la tienda
+ *     tags: [Store]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de items destacados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ */
+router.get('/items/featured', StoreController.getFeaturedItems);
+
+/**
+ * @swagger
+ * /api/store/wallet/transactions:
+ *   get:
+ *     summary: Obtener historial de transacciones de la billetera
+ *     tags: [Store]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Límite de transacciones a retornar
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [purchase, reward, admin_add, refund]
+ *         description: Filtrar por tipo de transacción
+ *       - in: query
+ *         name: startAfter
+ *         schema:
+ *           type: string
+ *         description: ID de transacción para paginación
+ *     responses:
+ *       200:
+ *         description: Historial de transacciones
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     transactions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           type:
+ *                             type: string
+ *                             enum: [purchase, reward, admin_add, refund]
+ *                           amount:
+ *                             type: number
+ *                             description: Positivo para ingresos, negativo para gastos
+ *                           description:
+ *                             type: string
+ *                           storeItemId:
+ *                             type: string
+ *                             nullable: true
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         totalEarned:
+ *                           type: number
+ *                         totalSpent:
+ *                           type: number
+ *                         netAmount:
+ *                           type: number
+ *                         transactionCount:
+ *                           type: integer
+ *                         transactionsByType:
+ *                           type: object
+ *                     wallet:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         balance:
+ *                           type: number
+ */
+router.get('/wallet/transactions', StoreController.getTransactions);
+
+/**
+ * @swagger
+ * /api/store/wallet/add-points:
+ *   post:
+ *     summary: Agregar puntos a la billetera (admin/testing)
+ *     tags: [Store]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - points
+ *             properties:
+ *               points:
+ *                 type: number
+ *                 description: Cantidad de puntos a agregar
+ *                 example: 100
+ *               description:
+ *                 type: string
+ *                 description: Descripción de la transacción
+ *                 example: "Puntos de prueba"
+ *     responses:
+ *       201:
+ *         description: Puntos agregados exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Puntos agregados exitosamente
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     wallet:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         balance:
+ *                           type: number
+ *                     pointsAdded:
+ *                       type: number
+ *                     transaction:
+ *                       type: object
+ *       400:
+ *         description: Error de validación
+ */
+router.post(
+  '/wallet/add-points',
+  [
+    body('points')
+      .isFloat({ min: 0.01 })
+      .withMessage('Los puntos deben ser un número positivo mayor a 0'),
+    body('description')
+      .optional()
+      .isString()
+      .trim(),
+  ],
+  validateRequest,
+  StoreController.addPoints
+);
+
 export default router;
 

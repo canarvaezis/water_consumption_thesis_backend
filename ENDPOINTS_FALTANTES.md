@@ -57,9 +57,12 @@
 - ✅ `GET /api/store/items` - Listar todos los items de tienda
 - ✅ `GET /api/store/items/:itemId` - Obtener item por ID
 - ✅ `GET /api/store/items/category/:categoryId` - Items por categoría
+- ✅ `GET /api/store/items/featured` - Items destacados
 - ✅ `POST /api/store/purchase` - Comprar un item de la tienda
 - ✅ `GET /api/store/inventory` - Obtener inventario completo del usuario
 - ✅ `GET /api/store/inventory/:itemId` - Verificar si tiene un item específico
+- ✅ `GET /api/store/wallet/transactions` - Historial de transacciones
+- ✅ `POST /api/store/wallet/add-points` - Agregar puntos (admin/testing)
 
 #### **Health**
 - ✅ `GET /health` - Estado del servidor
@@ -75,16 +78,9 @@
 - `StoreCategoryModel` ✅
 - `InventoryModel` ✅
 - `WalletModel` ✅
+- `WalletTransactionModel` ✅ (nuevo)
 
-**Endpoints pendientes (opcionales):**
-
-#### **Billetera (Wallet) - Opcionales**
-- ❌ `GET /api/store/wallet/transactions` - Historial de transacciones
-- ❌ `POST /api/store/wallet/add-points` - Agregar puntos (admin/testing)
-- ✅ `GET /api/store/wallet/balance` - Ya existe en `/api/auth/balance`
-
-#### **Items Destacados (Opcional)**
-- ❌ `GET /api/store/items/featured` - Items destacados
+**Estado:** ✅ **COMPLETADO** - Todos los endpoints principales y opcionales están implementados
 
 ---
 
@@ -260,7 +256,7 @@
 
 | Categoría | Endpoints Faltantes | Prioridad | Estado |
 |-----------|---------------------|-----------|--------|
-| ~~**Tienda**~~ | ~~8 endpoints~~ → 2 opcionales | ~~🔴 Alta~~ | ✅ **COMPLETADO** |
+| ~~**Tienda**~~ | ~~10 endpoints~~ → 0 | ~~🔴 Alta~~ | ✅ **COMPLETADO** |
 | **Logros** | 5 endpoints | 🔴 Alta | ❌ Pendiente |
 | **Estrato** | 3 endpoints | 🔴 Alta | ❌ Pendiente |
 | **Recomendaciones** | 5 endpoints | 🟡 Media | ❌ Pendiente |
@@ -268,11 +264,12 @@
 | **Setup Items** | 4 endpoints | 🟢 Baja | ❌ Pendiente |
 | **Estadísticas Avanzadas** | 4 endpoints | 🟢 Baja | ❌ Pendiente |
 | **Gestión Usuario** | 5 endpoints | 🟢 Baja | ❌ Pendiente |
-| **TOTAL** | **31 endpoints** (2 opcionales de tienda) | | |
+| **TOTAL** | **29 endpoints** | | |
 
 ---
 
 **Última actualización:** 
-- ✅ Tienda completada (8 endpoints principales implementados)
+- ✅ Tienda completada (10 endpoints implementados, incluyendo transacciones e items destacados)
+- ✅ Modelo de transacciones creado (`WalletTransactionModel`)
 - Análisis basado en modelos y servicios existentes en el código.
 

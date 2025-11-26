@@ -8,6 +8,7 @@ import { StoreItemModel } from '../models/store-item.model.js';
 import { StoreCategoryModel } from '../models/store-category.model.js';
 import { InventoryModel } from '../models/inventory.model.js';
 import { WalletModel } from '../models/wallet.model.js';
+import { WalletTransactionModel } from '../models/wallet-transaction.model.js';
 import { UserModel } from '../models/user.model.js';
 
 export class StoreService {
@@ -218,6 +219,14 @@ export class StoreService {
     // Agregar al inventario
     const inventoryItem = await InventoryModel.addItem(userId, wallet.id, storeItemId);
 
+    // Registrar transacción
+    const transaction = await WalletTransactionModel.create(userId, wallet.id, {
+      type: 'purchase',
+      amount: -item.price, // Negativo porque es un gasto
+      description: `Compra de ${item.name}`,
+      storeItemId: storeItemId,
+    });
+
     return {
       item: {
         id: item.id,
@@ -230,6 +239,11 @@ export class StoreService {
         balance: updatedWallet.balance,
       },
       pointsSpent: item.price,
+      transaction: {
+        id: transaction.id,
+        type: transaction.type,
+        amount: transaction.amount,
+      },
     };
   }
 
@@ -296,6 +310,113 @@ export class StoreService {
     // Verificar si es un item por defecto
     const item = await StoreItemModel.findById(storeItemId);
     return item ? (item.default || false) : false;
+  }
+
+  /**
+   * Obtener items destacados
+   * Por ahora retorna items con precio > 0 ordenados por precio (más caros primero)
+   * O se puede usar un campo "featured" en el futuro
+   */
+  static async getFeaturedItems(userId) {
+    const items = await StoreItemModel.findAll();
+    const wallet = await WalletModel.findByUserId(userId);
+    
+    // Filtrar items destacados (por ahora: precio > 0, no default)
+    // En el futuro se puede agregar un campo "featured: true" en el modelo
+    const featuredItems = items
+      .filter(item => !item.default && item.price > 0)
+      .sort((a, b) => (b.price || 0) - (a.price || 0))
+      .slice(0, 10); // Top 10 items más caros como destacados
+    
+    let ownedItemIds = new Set();
+    if (wallet) {
+      const inventory = await InventoryModel.getInventoryByWalletId(userId, wallet.id);
+      ownedItemIds = new Set(inventory.map(item => item.storeItemId));
+    }
+
+    return featuredItems.map(item => ({
+      id: item.id,
+      storeItemId: item.storeItemId || item.id,
+      storeCategoryId: item.storeCategoryId,
+      category: item.category,
+      name: item.name,
+      description: item.description,
+      price: item.price || 0,
+      assetUrl: item.assetUrl || item.asset_url,
+      default: item.default || false,
+      createdAt: item.createdAt,
+      owned: item.default || false || ownedItemIds.has(item.id),
+    }));
+  }
+
+  /**
+   * Obtener historial de transacciones
+   */
+  static async getTransactions(userId, options = {}) {
+    const wallet = await WalletModel.findByUserId(userId);
+    
+    if (!wallet) {
+      return {
+        transactions: [],
+        summary: {
+          totalEarned: 0,
+          totalSpent: 0,
+          netAmount: 0,
+          transactionCount: 0,
+          transactionsByType: {},
+        },
+      };
+    }
+
+    const transactions = await WalletTransactionModel.getTransactions(userId, wallet.id, options);
+    const summary = await WalletTransactionModel.getTransactionSummary(userId, wallet.id);
+
+    return {
+      transactions,
+      summary,
+      wallet: {
+        id: wallet.id,
+        balance: wallet.balance,
+      },
+    };
+  }
+
+  /**
+   * Agregar puntos a la billetera (admin/testing)
+   */
+  static async addPoints(userId, points, description = 'Puntos agregados por administrador') {
+    if (points <= 0) {
+      throw new Error('Los puntos deben ser un número positivo');
+    }
+
+    // Obtener o crear wallet
+    let wallet = await WalletModel.findByUserId(userId);
+    if (!wallet) {
+      wallet = await WalletModel.create(userId, 0);
+    }
+
+    // Agregar puntos
+    const updatedWallet = await WalletModel.addPoints(userId, wallet.id, points);
+
+    // Registrar transacción
+    const transaction = await WalletTransactionModel.create(userId, wallet.id, {
+      type: 'admin_add',
+      amount: points,
+      description,
+    });
+
+    return {
+      wallet: {
+        id: updatedWallet.id,
+        balance: updatedWallet.balance,
+      },
+      pointsAdded: points,
+      transaction: {
+        id: transaction.id,
+        type: transaction.type,
+        amount: transaction.amount,
+      },
+    };
   }
 }
 

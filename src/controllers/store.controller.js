@@ -205,5 +205,92 @@ export class StoreController {
       });
     }
   }
+
+  /**
+   * Obtener items destacados
+   */
+  static async getFeaturedItems(req, res) {
+    try {
+      const userId = req.user.userId;
+      const items = await StoreService.getFeaturedItems(userId);
+      
+      res.json({
+        success: true,
+        data: {
+          items,
+        },
+      });
+    } catch (error) {
+      console.error('Error al obtener items destacados:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error al obtener items destacados',
+      });
+    }
+  }
+
+  /**
+   * Obtener historial de transacciones
+   */
+  static async getTransactions(req, res) {
+    try {
+      const userId = req.user.userId;
+      const { limit, type, startAfter } = req.query;
+      
+      const options = {
+        limit: limit ? parseInt(limit) : 50,
+        type: type || null,
+        startAfter: startAfter || null,
+      };
+      
+      const result = await StoreService.getTransactions(userId, options);
+      
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Error al obtener transacciones:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error al obtener transacciones',
+      });
+    }
+  }
+
+  /**
+   * Agregar puntos a la billetera (admin/testing)
+   */
+  static async addPoints(req, res) {
+    try {
+      const userId = req.user.userId;
+      const { points, description } = req.body;
+
+      if (!points || points <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Los puntos deben ser un número positivo',
+        });
+      }
+
+      const result = await StoreService.addPoints(
+        userId,
+        points,
+        description || 'Puntos agregados por administrador'
+      );
+      
+      res.status(201).json({
+        success: true,
+        message: 'Puntos agregados exitosamente',
+        data: result,
+      });
+    } catch (error) {
+      console.error('Error al agregar puntos:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error al agregar puntos',
+      });
+    }
+  }
 }
 
