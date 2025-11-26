@@ -3,131 +3,102 @@
  */
 
 import { NotificationService } from '../services/notification.service.js';
+import { asyncHandler } from '../middleware/error.middleware.js';
+import { NotFoundError } from '../utils/errors.js';
 
 export class NotificationController {
   /**
    * Obtener notificaciones del usuario
    */
-  static async getUserNotifications(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { unreadOnly, limit, type } = req.query;
+  static getUserNotifications = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { unreadOnly, limit, type } = req.query;
 
-      const result = await NotificationService.getUserNotifications(userId, {
-        unreadOnly,
-        limit,
-        type,
-      });
+    const result = await NotificationService.getUserNotifications(userId, {
+      unreadOnly,
+      limit,
+      type,
+    });
 
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      console.error('Error al obtener notificaciones:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener notificaciones',
-      });
-    }
-  }
+    res.json({
+      success: true,
+      data: result,
+    });
+  });
 
   /**
    * Obtener notificaciones no leídas
    */
-  static async getUnreadNotifications(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { limit } = req.query;
+  static getUnreadNotifications = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { limit } = req.query;
 
-      const result = await NotificationService.getUnreadNotifications(userId, limit);
+    const result = await NotificationService.getUnreadNotifications(userId, limit);
 
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      console.error('Error al obtener notificaciones no leídas:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener notificaciones no leídas',
-      });
-    }
-  }
+    res.json({
+      success: true,
+      data: result,
+    });
+  });
 
   /**
    * Marcar notificación como leída
    */
-  static async markNotificationAsRead(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { notificationId } = req.params;
+  static markNotificationAsRead = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { notificationId } = req.params;
 
+    try {
       const notification = await NotificationService.markNotificationAsRead(
         userId,
         notificationId
       );
-
       res.json({
         success: true,
         message: 'Notificación marcada como leída',
         data: notification,
       });
     } catch (error) {
-      console.error('Error al marcar notificación como leída:', error);
-      const statusCode = error.message === 'Notificación no encontrada' ? 404 : 500;
-      res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Error al marcar notificación como leída',
-      });
+      if (error.message === 'Notificación no encontrada') {
+        throw new NotFoundError(error.message);
+      }
+      throw error;
     }
-  }
+  });
 
   /**
    * Marcar todas las notificaciones como leídas
    */
-  static async markAllNotificationsAsRead(req, res) {
-    try {
-      const userId = req.user.uid;
+  static markAllNotificationsAsRead = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
 
-      const result = await NotificationService.markAllNotificationsAsRead(userId);
+    const result = await NotificationService.markAllNotificationsAsRead(userId);
 
-      res.json({
-        success: true,
-        message: result.message,
-        data: { count: result.count },
-      });
-    } catch (error) {
-      console.error('Error al marcar todas las notificaciones como leídas:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al marcar todas las notificaciones como leídas',
-      });
-    }
-  }
+    res.json({
+      success: true,
+      message: result.message,
+      data: { count: result.count },
+    });
+  });
 
   /**
    * Eliminar notificación
    */
-  static async deleteNotification(req, res) {
+  static deleteNotification = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { notificationId } = req.params;
+
     try {
-      const userId = req.user.uid;
-      const { notificationId } = req.params;
-
       const result = await NotificationService.deleteNotification(userId, notificationId);
-
       res.json({
         success: true,
         message: result.message,
       });
     } catch (error) {
-      console.error('Error al eliminar notificación:', error);
-      const statusCode = error.message === 'Notificación no encontrada' ? 404 : 500;
-      res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Error al eliminar notificación',
-      });
+      if (error.message === 'Notificación no encontrada') {
+        throw new NotFoundError(error.message);
+      }
+      throw error;
     }
-  }
+  });
 }
-

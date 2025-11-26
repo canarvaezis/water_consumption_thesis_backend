@@ -176,10 +176,13 @@ app.use((err, req, res, next) => {
     method: req.method,
     ip: req.ip,
     userId: req.user?.uid || 'anonymous',
+    statusCode: err.statusCode || err.status || 500,
   });
 
+  // Obtener código de estado (de AppError o por defecto 500)
+  const statusCode = err.statusCode || err.status || 500;
+  
   // Respuesta al cliente (sin exponer detalles internos en producción)
-  const statusCode = err.status || err.statusCode || 500;
   const response = {
     success: false,
     message: err.message || 'Error interno del servidor',
@@ -192,7 +195,7 @@ app.use((err, req, res, next) => {
   }
 
   // Si es un error de validación, incluir detalles
-  if (err.name === 'ValidationError' || err.name === 'CastError') {
+  if (err.name === 'ValidationError' || err.name === 'CastError' || err.errors) {
     response.errors = err.errors || [];
   }
 

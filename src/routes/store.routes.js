@@ -7,6 +7,7 @@ import { StoreController } from '../controllers/store.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { param, body, query } from 'express-validator';
 import { validateRequest } from '../middleware/validation.middleware.js';
+import { validateFirestoreId } from '../utils/validators.js';
 
 const router = express.Router();
 
@@ -85,12 +86,9 @@ router.get('/categories', StoreController.getCategories);
 router.get(
   '/categories/:categoryId',
   [
-    param('categoryId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de categoría es requerido'),
+    validateFirestoreId('categoryId'),
+    validateRequest,
   ],
-  validateRequest,
   StoreController.getCategoryById
 );
 
@@ -167,12 +165,9 @@ router.get('/items', StoreController.getItems);
 router.get(
   '/items/:itemId',
   [
-    param('itemId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID del item es requerido'),
+    validateFirestoreId('itemId'),
+    validateRequest,
   ],
-  validateRequest,
   StoreController.getItemById
 );
 
@@ -197,12 +192,9 @@ router.get(
 router.get(
   '/items/category/:categoryId',
   [
-    param('categoryId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de categoría es requerido'),
+    validateFirestoreId('categoryId'),
+    validateRequest,
   ],
-  validateRequest,
   StoreController.getItemsByCategory
 );
 
@@ -354,12 +346,9 @@ router.get('/inventory', StoreController.getUserInventory);
 router.get(
   '/inventory/:itemId',
   [
-    param('itemId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID del item es requerido'),
+    validateFirestoreId('itemId'),
+    validateRequest,
   ],
-  validateRequest,
   StoreController.hasItem
 );
 

@@ -7,6 +7,7 @@ import { HouseholdController } from '../controllers/household.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { body, param, query } from 'express-validator';
 import { validateRequest } from '../middleware/validation.middleware.js';
+import { validateFirestoreId } from '../utils/validators.js';
 
 const router = express.Router();
 
@@ -178,12 +179,9 @@ router.post(
 router.delete(
   '/:householdId',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
+    validateFirestoreId('householdId'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.deleteHousehold
 );
 
@@ -224,10 +222,7 @@ router.delete(
 router.put(
   '/:householdId',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
+    validateFirestoreId('householdId'),
     body('householdName')
       .optional()
       .trim()
@@ -237,8 +232,8 @@ router.put(
       .optional()
       .isInt({ min: 1 })
       .withMessage('El límite de miembros debe ser un número positivo'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.updateHousehold
 );
 
@@ -265,12 +260,9 @@ router.put(
 router.get(
   '/:householdId/invite-code',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
+    validateFirestoreId('householdId'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.getInviteCode
 );
 
@@ -315,19 +307,13 @@ router.get(
 router.put(
   '/:householdId/members/:targetUserId/role',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
-    param('targetUserId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID del usuario es requerido'),
+    validateFirestoreId('householdId'),
+    validateFirestoreId('targetUserId'),
     body('role')
       .isIn(['admin', 'member'])
       .withMessage('El rol debe ser "admin" o "member"'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.assignRole
 );
 
@@ -359,16 +345,10 @@ router.put(
 router.delete(
   '/:householdId/members/:targetUserId',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
-    param('targetUserId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID del usuario es requerido'),
+    validateFirestoreId('householdId'),
+    validateFirestoreId('targetUserId'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.removeMember
 );
 
@@ -401,16 +381,13 @@ router.delete(
 router.get(
   '/:householdId/consumption/daily',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
+    validateFirestoreId('householdId'),
     query('date')
       .optional()
       .isISO8601()
       .withMessage('La fecha debe ser válida (ISO 8601)'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.getDailyConsumption
 );
 
@@ -449,10 +426,7 @@ router.get(
 router.get(
   '/:householdId/consumption/history',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
+    validateFirestoreId('householdId'),
     query('startDate')
       .optional()
       .isISO8601()
@@ -461,8 +435,8 @@ router.get(
       .optional()
       .isISO8601()
       .withMessage('La fecha de fin debe ser válida (ISO 8601)'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.getConsumptionHistory
 );
 
@@ -496,16 +470,13 @@ router.get(
 router.get(
   '/:householdId/statistics',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
+    validateFirestoreId('householdId'),
     query('period')
       .optional()
       .isIn(['week', 'month', 'year'])
       .withMessage('El período debe ser "week", "month" o "year"'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.getStatistics
 );
 
@@ -544,10 +515,7 @@ router.get(
 router.get(
   '/:householdId/consumption/by-member',
   [
-    param('householdId')
-      .trim()
-      .notEmpty()
-      .withMessage('El ID de la familia es requerido'),
+    validateFirestoreId('householdId'),
     query('startDate')
       .optional()
       .isISO8601()
@@ -556,8 +524,8 @@ router.get(
       .optional()
       .isISO8601()
       .withMessage('La fecha de fin debe ser válida (ISO 8601)'),
+    validateRequest,
   ],
-  validateRequest,
   HouseholdController.getConsumptionByMember
 );
 

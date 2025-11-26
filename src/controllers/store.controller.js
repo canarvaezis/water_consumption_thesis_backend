@@ -3,137 +3,94 @@
  */
 
 import { StoreService } from '../services/store.service.js';
+import { asyncHandler } from '../middleware/error.middleware.js';
+import { NotFoundError, BadRequestError } from '../utils/errors.js';
 
 export class StoreController {
   /**
    * Obtener todas las categorías de tienda
    */
-  static async getCategories(req, res) {
-    try {
-      const categories = await StoreService.getCategories();
-      
-      res.json({
-        success: true,
-        data: {
-          categories,
-        },
-      });
-    } catch (error) {
-      console.error('Error al obtener categorías:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener categorías',
-      });
-    }
-  }
+  static getCategories = asyncHandler(async (req, res) => {
+    const categories = await StoreService.getCategories();
+    
+    res.json({
+      success: true,
+      data: {
+        categories,
+      },
+    });
+  });
 
   /**
    * Obtener categoría por ID
    */
-  static async getCategoryById(req, res) {
-    try {
-      const { categoryId } = req.params;
-      const category = await StoreService.getCategoryById(categoryId);
-      
-      res.json({
-        success: true,
-        data: category,
-      });
-    } catch (error) {
-      console.error('Error al obtener categoría:', error);
-      const statusCode = error.message === 'Categoría no encontrada' ? 404 : 500;
-      res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Error al obtener categoría',
-      });
-    }
-  }
+  static getCategoryById = asyncHandler(async (req, res) => {
+    const { categoryId } = req.params;
+    const category = await StoreService.getCategoryById(categoryId);
+    
+    res.json({
+      success: true,
+      data: category,
+    });
+  });
 
   /**
    * Obtener todos los items de tienda
    */
-  static async getItems(req, res) {
-    try {
-      const userId = req.user.uid;
-      const items = await StoreService.getItems(userId);
-      
-      res.json({
-        success: true,
-        data: {
-          items,
-        },
-      });
-    } catch (error) {
-      console.error('Error al obtener items:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener items',
-      });
-    }
-  }
+  static getItems = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const items = await StoreService.getItems(userId);
+    
+    res.json({
+      success: true,
+      data: {
+        items,
+      },
+    });
+  });
 
   /**
    * Obtener item por ID
    */
-  static async getItemById(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { itemId } = req.params;
-      const item = await StoreService.getItemById(userId, itemId);
-      
-      res.json({
-        success: true,
-        data: item,
-      });
-    } catch (error) {
-      console.error('Error al obtener item:', error);
-      const statusCode = error.message === 'Item no encontrado' ? 404 : 500;
-      res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Error al obtener item',
-      });
-    }
-  }
+  static getItemById = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { itemId } = req.params;
+    const item = await StoreService.getItemById(userId, itemId);
+    
+    res.json({
+      success: true,
+      data: item,
+    });
+  });
 
   /**
    * Obtener items por categoría
    */
-  static async getItemsByCategory(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { categoryId } = req.params;
-      const items = await StoreService.getItemsByCategory(userId, categoryId);
-      
-      res.json({
-        success: true,
-        data: {
-          items,
-        },
-      });
-    } catch (error) {
-      console.error('Error al obtener items por categoría:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener items por categoría',
-      });
-    }
-  }
+  static getItemsByCategory = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { categoryId } = req.params;
+    const items = await StoreService.getItemsByCategory(userId, categoryId);
+    
+    res.json({
+      success: true,
+      data: {
+        items,
+      },
+    });
+  });
 
   /**
    * Comprar un item de la tienda
    */
-  static async purchaseItem(req, res) {
+  static purchaseItem = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { storeItemId } = req.body;
+
+    if (!storeItemId) {
+      throw new BadRequestError('storeItemId es requerido');
+    }
+
     try {
-      const userId = req.user.uid;
-      const { storeItemId } = req.body;
-
-      if (!storeItemId) {
-        return res.status(400).json({
-          success: false,
-          message: 'storeItemId es requerido',
-        });
-      }
-
       const purchase = await StoreService.purchaseItem(userId, storeItemId);
       
       res.status(201).json({
@@ -142,155 +99,106 @@ export class StoreController {
         data: purchase,
       });
     } catch (error) {
-      console.error('Error al comprar item:', error);
-      
-      let statusCode = 500;
+      // Manejar errores específicos del servicio
       if (error.message === 'Item no encontrado') {
-        statusCode = 404;
+        throw new NotFoundError(error.message);
       } else if (
         error.message === 'Saldo insuficiente' ||
         error.message === 'Ya tienes este item en tu inventario'
       ) {
-        statusCode = 400;
+        throw new BadRequestError(error.message);
       }
-
-      res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Error al comprar item',
-      });
+      // Re-lanzar otros errores para que sean manejados por el middleware
+      throw error;
     }
-  }
+  });
 
   /**
    * Obtener inventario completo del usuario
    */
-  static async getUserInventory(req, res) {
-    try {
-      const userId = req.user.uid;
-      const inventory = await StoreService.getUserInventory(userId);
-      
-      res.json({
-        success: true,
-        data: inventory,
-      });
-    } catch (error) {
-      console.error('Error al obtener inventario:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener inventario',
-      });
-    }
-  }
+  static getUserInventory = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const inventory = await StoreService.getUserInventory(userId);
+    
+    res.json({
+      success: true,
+      data: inventory,
+    });
+  });
 
   /**
    * Verificar si el usuario tiene un item específico
    */
-  static async hasItem(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { itemId } = req.params;
-      const hasItem = await StoreService.hasItem(userId, itemId);
-      
-      res.json({
-        success: true,
-        data: {
-          hasItem,
-        },
-      });
-    } catch (error) {
-      console.error('Error al verificar item:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al verificar item',
-      });
-    }
-  }
+  static hasItem = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { itemId } = req.params;
+    const hasItem = await StoreService.hasItem(userId, itemId);
+    
+    res.json({
+      success: true,
+      data: {
+        hasItem,
+      },
+    });
+  });
 
   /**
    * Obtener items destacados
    */
-  static async getFeaturedItems(req, res) {
-    try {
-      const userId = req.user.uid;
-      const items = await StoreService.getFeaturedItems(userId);
-      
-      res.json({
-        success: true,
-        data: {
-          items,
-        },
-      });
-    } catch (error) {
-      console.error('Error al obtener items destacados:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener items destacados',
-      });
-    }
-  }
+  static getFeaturedItems = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const items = await StoreService.getFeaturedItems(userId);
+    
+    res.json({
+      success: true,
+      data: {
+        items,
+      },
+    });
+  });
 
   /**
    * Obtener historial de transacciones
    */
-  static async getTransactions(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { limit, type, startAfter } = req.query;
-      
-      const options = {
-        limit: limit ? parseInt(limit) : 50,
-        type: type || null,
-        startAfter: startAfter || null,
-      };
-      
-      const result = await StoreService.getTransactions(userId, options);
-      
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      console.error('Error al obtener transacciones:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener transacciones',
-      });
-    }
-  }
+  static getTransactions = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { limit, type, startAfter } = req.query;
+    
+    const options = {
+      limit: limit ? parseInt(limit) : 50,
+      type: type || null,
+      startAfter: startAfter || null,
+    };
+    
+    const result = await StoreService.getTransactions(userId, options);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  });
 
   /**
    * Agregar puntos a la billetera (admin/testing)
    */
-  static async addPoints(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { points, description } = req.body;
+  static addPoints = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { points, description } = req.body;
 
-      if (!points || points <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Los puntos deben ser un número positivo',
-        });
-      }
-
-      const result = await StoreService.addPoints(
-        userId,
-        points,
-        description || 'Puntos agregados por administrador'
-      );
-      
-      res.status(201).json({
-        success: true,
-        message: 'Puntos agregados exitosamente',
-        data: result,
-      });
-    } catch (error) {
-      console.error('Error al agregar puntos:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al agregar puntos',
-      });
+    if (!points || points <= 0) {
+      throw new BadRequestError('Los puntos deben ser un número positivo');
     }
-  }
-}
 
+    const result = await StoreService.addPoints(
+      userId,
+      points,
+      description || 'Puntos agregados por administrador'
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: 'Puntos agregados exitosamente',
+      data: result,
+    });
+  });
+}

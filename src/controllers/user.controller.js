@@ -3,161 +3,122 @@
  */
 
 import { UserService } from '../services/user.service.js';
+import { asyncHandler } from '../middleware/error.middleware.js';
+import { NotFoundError, BadRequestError } from '../utils/errors.js';
 
 export class UserController {
   /**
    * Actualizar perfil del usuario
    */
-  static async updateProfile(req, res) {
-    try {
-      const userId = req.user.uid;
-      const updateData = req.body;
+  static updateProfile = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const updateData = req.body;
 
-      const updatedProfile = await UserService.updateProfile(userId, updateData);
+    const updatedProfile = await UserService.updateProfile(userId, updateData);
 
-      res.json({
-        success: true,
-        message: 'Perfil actualizado exitosamente',
-        data: updatedProfile,
-      });
-    } catch (error) {
-      console.error('Error al actualizar perfil:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || 'Error al actualizar perfil',
-      });
-    }
-  }
+    res.json({
+      success: true,
+      message: 'Perfil actualizado exitosamente',
+      data: updatedProfile,
+    });
+  });
 
   /**
    * Cambiar contraseña
    */
-  static async changePassword(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { newPassword } = req.body;
+  static changePassword = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { newPassword } = req.body;
 
-      if (!newPassword) {
-        return res.status(400).json({
-          success: false,
-          message: 'newPassword es requerido',
-        });
-      }
-
-      const result = await UserService.changePassword(userId, newPassword);
-
-      res.json({
-        success: true,
-        message: result.message,
-      });
-    } catch (error) {
-      console.error('Error al cambiar contraseña:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || 'Error al cambiar contraseña',
-      });
+    if (!newPassword) {
+      throw new BadRequestError('newPassword es requerido');
     }
-  }
+
+    const result = await UserService.changePassword(userId, newPassword);
+
+    res.json({
+      success: true,
+      message: result.message,
+    });
+  });
 
   /**
    * Eliminar cuenta
    */
-  static async deleteAccount(req, res) {
+  static deleteAccount = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+
     try {
-      const userId = req.user.uid;
-
       const result = await UserService.deleteAccount(userId);
-
       res.json({
         success: true,
         message: result.message,
       });
     } catch (error) {
-      console.error('Error al eliminar cuenta:', error);
-      const statusCode = error.message === 'Usuario no encontrado' ? 404 : 500;
-      res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Error al eliminar cuenta',
-      });
+      if (error.message === 'Usuario no encontrado') {
+        throw new NotFoundError(error.message);
+      }
+      throw error;
     }
-  }
+  });
 
   /**
    * Obtener actividad reciente del usuario
    */
-  static async getUserActivity(req, res) {
-    try {
-      const userId = req.user.uid;
-      const { limit, startDate, endDate } = req.query;
+  static getUserActivity = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { limit, startDate, endDate } = req.query;
 
-      const options = {
-        limit: limit ? parseInt(limit) : 20,
-        startDate: startDate || null,
-        endDate: endDate || null,
-      };
+    const options = {
+      limit: limit ? parseInt(limit) : 20,
+      startDate: startDate || null,
+      endDate: endDate || null,
+    };
 
-      const activities = await UserService.getUserActivity(userId, options);
+    const activities = await UserService.getUserActivity(userId, options);
 
-      res.json({
-        success: true,
-        data: {
-          activities,
-          count: activities.length,
-        },
-      });
-    } catch (error) {
-      console.error('Error al obtener actividad:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Error al obtener actividad',
-      });
-    }
-  }
+    res.json({
+      success: true,
+      data: {
+        activities,
+        count: activities.length,
+      },
+    });
+  });
 
   /**
    * Obtener configuración del usuario
    */
-  static async getUserSettings(req, res) {
+  static getUserSettings = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    
     try {
-      const userId = req.user.uid;
       const settings = await UserService.getUserSettings(userId);
-
       res.json({
         success: true,
         data: settings,
       });
     } catch (error) {
-      console.error('Error al obtener configuración:', error);
-      const statusCode = error.message === 'Usuario no encontrado' ? 404 : 500;
-      res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Error al obtener configuración',
-      });
+      if (error.message === 'Usuario no encontrado') {
+        throw new NotFoundError(error.message);
+      }
+      throw error;
     }
-  }
+  });
 
   /**
    * Actualizar configuración del usuario
    */
-  static async updateUserSettings(req, res) {
-    try {
-      const userId = req.user.uid;
-      const settings = req.body;
+  static updateUserSettings = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const settings = req.body;
 
-      const updatedSettings = await UserService.updateUserSettings(userId, settings);
+    const updatedSettings = await UserService.updateUserSettings(userId, settings);
 
-      res.json({
-        success: true,
-        message: 'Configuración actualizada exitosamente',
-        data: updatedSettings,
-      });
-    } catch (error) {
-      console.error('Error al actualizar configuración:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || 'Error al actualizar configuración',
-      });
-    }
-  }
+    res.json({
+      success: true,
+      message: 'Configuración actualizada exitosamente',
+      data: updatedSettings,
+    });
+  });
 }
-
