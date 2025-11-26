@@ -85,6 +85,5 @@ export const env = {
 // En producción, este log se mostrará antes de que el logger esté listo
 if (env.isDevelopment) {
   console.log('✅ Variables de entorno validadas correctamente');
-  console.log('   ✓ Firebase Auth configurado (no se requiere JWT)');
 }
 
