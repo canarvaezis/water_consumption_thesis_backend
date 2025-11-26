@@ -85,7 +85,7 @@ npm run dev
 
 La documentación completa de la API está disponible en Swagger UI:
 
-**URL:** `http://localhost:3000/api-docs`
+**URL:** `http://localhost:3000/docs`
 
 Puedes ver todos los endpoints, probarlos directamente desde el navegador y ver ejemplos de requests y responses.
 

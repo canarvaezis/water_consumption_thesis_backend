@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.routes.js';
 import consumptionRoutes from './routes/consumption.routes.js';
 import goalsRoutes from './routes/goals.routes.js';
 import profileCustomizationRoutes from './routes/profile-customization.routes.js';
+import householdRoutes from './routes/household.routes.js';
 // import userRoutes from './routes/user.routes.js';
 
 dotenv.config();
@@ -39,7 +40,7 @@ app.use((req, res, next) => {
 });
 
 // Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'Water Consumption API Documentation',
 }));
@@ -82,6 +83,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/consumption', consumptionRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/profile', profileCustomizationRoutes);
+app.use('/api/household', householdRoutes);
 // app.use('/api/users', userRoutes);
 
 // Manejo de rutas no encontradas

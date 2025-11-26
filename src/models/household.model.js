@@ -6,6 +6,7 @@
  *   householdId: string (auto-generado)
  *   householdName: string
  *   inviteCode: string (único)
+ *   memberLimit: number (opcional, límite de miembros)
  *   createdAt: Timestamp
  *   updatedAt: Timestamp
  * }
@@ -49,6 +50,7 @@ export class HouseholdModel {
       householdId: householdRef.id,
       householdName: householdData.householdName,
       inviteCode,
+      memberLimit: householdData.memberLimit || null,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
