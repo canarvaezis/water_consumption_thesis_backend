@@ -34,7 +34,7 @@ router.use(authenticateToken);
  *         required: true
  *         schema:
  *           type: string
- *         description: Primer período (ej: "lastWeek", "lastMonth", "2024-01-01,2024-01-31", "2024-01-01")
+ *         description: 'Primer período. Ejemplos: lastWeek, lastMonth, 2024-01-01,2024-01-31, 2024-01-01'
  *       - in: query
  *         name: period2
  *         required: true
@@ -113,7 +113,7 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
- *         description: Período a analizar (ej: "lastWeek", "lastMonth", "2024-01-01,2024-01-31")
+ *         description: 'Período a analizar. Ejemplos: lastWeek, lastMonth, 2024-01-01,2024-01-31'
  *       - in: query
  *         name: metric
  *         schema:
