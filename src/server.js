@@ -16,6 +16,7 @@ import householdRoutes from './routes/household.routes.js';
 import storeRoutes from './routes/store.routes.js';
 import userRoutes from './routes/user.routes.js';
 import achievementRoutes from './routes/achievement.routes.js';
+import recommendationRoutes from './routes/recommendation.routes.js';
 
 dotenv.config();
 
@@ -89,6 +90,7 @@ app.use('/api/household', householdRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/achievements', achievementRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

@@ -85,6 +85,24 @@ export class UserRecommendationModel {
   }
 
   /**
+   * Obtener recomendación por ID
+   */
+  static async findById(userId, recommendationId) {
+    const recommendationDoc = await db
+      .collection('users')
+      .doc(userId)
+      .collection('recommendations')
+      .doc(recommendationId)
+      .get();
+    
+    if (!recommendationDoc.exists) {
+      return null;
+    }
+    
+    return { id: recommendationDoc.id, ...recommendationDoc.data() };
+  }
+
+  /**
    * Eliminar recomendación
    */
   static async delete(userId, recommendationId) {
