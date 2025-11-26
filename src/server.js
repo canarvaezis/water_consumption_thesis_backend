@@ -14,7 +14,7 @@ import goalsRoutes from './routes/goals.routes.js';
 import profileCustomizationRoutes from './routes/profile-customization.routes.js';
 import householdRoutes from './routes/household.routes.js';
 import storeRoutes from './routes/store.routes.js';
-// import userRoutes from './routes/user.routes.js';
+import userRoutes from './routes/user.routes.js';
 
 dotenv.config();
 
@@ -86,7 +86,7 @@ app.use('/api/goals', goalsRoutes);
 app.use('/api/profile', profileCustomizationRoutes);
 app.use('/api/household', householdRoutes);
 app.use('/api/store', storeRoutes);
-// app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
