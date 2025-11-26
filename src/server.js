@@ -18,6 +18,7 @@ import userRoutes from './routes/user.routes.js';
 import achievementRoutes from './routes/achievement.routes.js';
 import recommendationRoutes from './routes/recommendation.routes.js';
 import stratumRoutes from './routes/stratum.routes.js';
+import setupRoutes from './routes/setup.routes.js';
 
 dotenv.config();
 
@@ -93,6 +94,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/stratum', stratumRoutes);
+app.use('/api/setup', setupRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

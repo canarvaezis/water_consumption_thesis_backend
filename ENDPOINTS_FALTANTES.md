@@ -95,33 +95,22 @@
 - ✅ `GET /api/stratum/history` - Historial de cambios de estrato
 - ✅ `GET /api/stratum/rates` - Obtener tarifas por estrato (público)
 
+#### **Setup Items** (`/api/setup`) - 4 endpoints
+- ✅ `GET /api/setup/items` - Obtener items de configuración del usuario
+- ✅ `POST /api/setup/items` - Agregar/actualizar item de configuración
+- ✅ `PUT /api/setup/items/:itemId` - Actualizar item de configuración
+- ✅ `DELETE /api/setup/items/:itemId` - Eliminar item de configuración
+
 #### **Health** - 1 endpoint
 - ✅ `GET /health` - Estado del servidor
 
 ---
 
-## ❌ Endpoints Faltantes (11 endpoints)
+## ❌ Endpoints Faltantes (7 endpoints)
 
 ---
 
-### ⚙️ **1. CONFIGURACIÓN DE USUARIO (Setup Items)** - `/api/setup`
-
-**Modelos existentes:**
-- `UserSetupItemModel` ✅
-
-**Endpoints necesarios:**
-
-- ❌ `GET /api/setup/items` - Obtener items de configuración del usuario
-- ❌ `POST /api/setup/items` - Agregar/actualizar item de configuración
-  - Body: `{ consumptionItemId: string, hasItem: boolean }`
-- ❌ `PUT /api/setup/items/:itemId` - Actualizar item de configuración
-- ❌ `DELETE /api/setup/items/:itemId` - Eliminar item de configuración
-
-**Total: 4 endpoints**
-
----
-
-### 🔔 **2. NOTIFICACIONES** - `/api/notifications`
+### 🔔 **1. NOTIFICACIONES** - `/api/notifications`
 
 **Modelos existentes:**
 - ❌ No existe modelo (necesita ser creado)
@@ -141,7 +130,7 @@
 
 ---
 
-### 📈 **3. ESTADÍSTICAS AVANZADAS** - `/api/statistics`
+### 📈 **2. ESTADÍSTICAS AVANZADAS** - `/api/statistics`
 
 **Endpoints adicionales que podrían ser útiles:**
 
@@ -176,10 +165,11 @@
 
 ### **🟡 Media Prioridad (Mejoras UX)**
 
-3. **Setup Items**
-   - `GET /api/setup/items` - Ver configuración
-   - `POST /api/setup/items` - Configurar items
-   - **Razón:** El modelo existe, permite personalizar qué items de consumo tiene el usuario
+3. ~~**Setup Items**~~ ✅ **COMPLETADO**
+   - ✅ `GET /api/setup/items` - Ver configuración
+   - ✅ `POST /api/setup/items` - Configurar items
+   - ✅ `PUT /api/setup/items/:itemId` - Actualizar item
+   - ✅ `DELETE /api/setup/items/:itemId` - Eliminar item
 
 4. **Notificaciones**
    - Sistema básico de notificaciones
@@ -200,10 +190,10 @@
 |-----------|---------------------|-----------|--------|
 | ~~**Estrato**~~ | ~~4 endpoints~~ → 0 | ~~🔴 Alta~~ | ✅ **COMPLETADO** |
 | ~~**Recomendaciones**~~ | ~~6 endpoints~~ → 0 | ~~🔴 Alta~~ | ✅ **COMPLETADO** |
-| **Setup Items** | 4 endpoints | 🟡 Media | ❌ Pendiente |
+| ~~**Setup Items**~~ | ~~4 endpoints~~ → 0 | ~~🟡 Media~~ | ✅ **COMPLETADO** |
 | **Notificaciones** | 5 endpoints | 🟡 Media | ❌ Pendiente |
 | **Estadísticas Avanzadas** | 4 endpoints | 🟢 Baja | ❌ Pendiente |
-| **TOTAL** | **11 endpoints** | | |
+| **TOTAL** | **7 endpoints** | | |
 
 ---
 
@@ -217,7 +207,13 @@
 
 2. ~~**Recomendaciones**~~: ✅ **COMPLETADO** - Todos los endpoints están implementados con generación automática.
 
-3. **Setup Items**: El modelo `UserSetupItemModel` existe. Permite al usuario configurar qué items de consumo tiene en su hogar (ej: tiene ducha, tiene lavadora, etc.).
+3. ~~**Setup Items**~~: ✅ **COMPLETADO** - Todos los endpoints están implementados:
+   - ✅ Obtener items de configuración del usuario
+   - ✅ Agregar/actualizar items de configuración
+   - ✅ Actualizar item por ID
+   - ✅ Eliminar item de configuración
+   - ✅ Validación de consumptionItemId existente
+   - ✅ Enriquecimiento con información del item de consumo
 
 4. **Notificaciones**: No existe modelo. Se necesita crear `NotificationModel` antes de implementar los endpoints.
 
@@ -227,9 +223,9 @@
 
 ## 🚀 Estado Actual del Proyecto
 
-**Endpoints Implementados:** 71  
-**Endpoints Faltantes:** 11  
-**Progreso:** ~87% completado
+**Endpoints Implementados:** 75  
+**Endpoints Faltantes:** 7  
+**Progreso:** ~91% completado
 
 ### ✅ Completado:
 - Autenticación
@@ -242,9 +238,9 @@
 - Logros
 - Recomendaciones
 - Estrato
+- Setup Items
 
 ### ❌ Pendiente:
-- Setup Items (Media prioridad)
 - Notificaciones (Media prioridad)
 - Estadísticas Avanzadas (Baja prioridad)
 
@@ -261,5 +257,11 @@
   - Historial de cambios de estrato
   - Tarifas públicas por estrato
   - Modelo de historial creado (`StratumHistoryModel`)
+- ✅ Setup Items completado (4 endpoints implementados)
+  - Obtener items de configuración del usuario
+  - Agregar/actualizar items de configuración
+  - Actualizar y eliminar items por ID
+  - Validación de items de consumo existentes
+  - Enriquecimiento con información del item de consumo
 - Análisis basado en modelos y rutas existentes en el código.
 
