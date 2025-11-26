@@ -1,10 +1,8 @@
 import admin from 'firebase-admin';
-import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync } from 'fs';
-
-dotenv.config();
+import logger from '../utils/logger.js';
 
 // Obtener la ruta del archivo actual
 const __filename = fileURLToPath(import.meta.url);
@@ -20,8 +18,10 @@ try {
   const serviceAccount = JSON.parse(readFileSync(firebaseServiceAccountPath, 'utf8'));
   firebaseConfig = serviceAccount;
 } catch (error) {
-  console.error('❌ Error al leer el archivo de credenciales de Firebase:', error.message);
-  console.error('📁 Ruta esperada:', firebaseServiceAccountPath);
+  logger.error('Error al leer el archivo de credenciales de Firebase', {
+    error: error.message,
+    path: firebaseServiceAccountPath,
+  });
   throw new Error('No se pudo cargar el archivo de credenciales de Firebase');
 }
 
@@ -31,10 +31,14 @@ if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(firebaseConfig),
     });
-    console.log('✅ Firebase Admin inicializado correctamente');
-    console.log(`📦 Proyecto: ${firebaseConfig.project_id}`);
+    logger.info('Firebase Admin inicializado correctamente', {
+      projectId: firebaseConfig.project_id,
+    });
   } catch (error) {
-    console.error('❌ Error al inicializar Firebase Admin:', error);
+    logger.error('Error al inicializar Firebase Admin', {
+      error: error.message,
+      stack: error.stack,
+    });
     throw error;
   }
 }

@@ -1,11 +1,33 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
+import mongoSanitize from 'express-mongo-sanitize';
 import dotenv from 'dotenv';
-import './config/firebase.js'; // Inicializar Firebase
+
+// Validar variables de entorno ANTES de cualquier otra importación
+import './config/env.js';
+
+// Inicializar Firebase
+import './config/firebase.js';
+
+// Importar logger
+import logger from './utils/logger.js';
 
 // Importar Swagger
 import { swaggerSpec, swaggerUi } from './config/swagger.js';
+
+// Importar rate limiters
+import {
+  generalLimiter,
+  authLimiter,
+  registerLimiter,
+  writeLimiter,
+  heavyOperationLimiter,
+} from './config/rateLimiter.js';
+
+// Importar configuración de entorno
+import { env } from './config/env.js';
 
 // Importar rutas
 import authRoutes from './routes/auth.routes.js';
@@ -22,27 +44,53 @@ import setupRoutes from './routes/setup.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import advancedStatisticsRoutes from './routes/advanced-statistics.routes.js';
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = env.port;
 
-// Middleware de seguridad
-app.use(helmet());
+// ============================================
+// MIDDLEWARES DE SEGURIDAD (aplicar primero)
+// ============================================
 
-// CORS
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true,
-}));
+// Helmet - Headers de seguridad
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Necesario para Swagger UI
+        scriptSrc: ["'self'", "'unsafe-inline'"], // Necesario para Swagger UI
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Desactivar si causa problemas con Swagger
+  })
+);
 
-// Body parser
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// CORS - Configuración de origen cruzado
+app.use(
+  cors({
+    origin: env.corsOrigin === '*' ? '*' : env.corsOrigin.split(','),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 
-// Middleware de logging básico
+// Compresión de respuestas - Mejora rendimiento
+app.use(compression());
+
+// Sanitización - Previene NoSQL injection
+app.use(mongoSanitize());
+
+// Rate limiting general - Aplicar a todas las rutas
+app.use(generalLimiter);
+
+// Body parser con límites de tamaño
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Middleware de logging estructurado
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  logger.http(`${req.method} ${req.path} - IP: ${req.ip}`);
   next();
 });
 
@@ -85,20 +133,30 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Rutas de la API
+// ============================================
+// RUTAS DE LA API
+// ============================================
+
+// Rutas de autenticación con rate limiting estricto
+app.use('/api/auth/register', registerLimiter);
+app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', authRoutes);
-app.use('/api/consumption', consumptionRoutes);
-app.use('/api/goals', goalsRoutes);
-app.use('/api/profile', profileCustomizationRoutes);
-app.use('/api/household', householdRoutes);
-app.use('/api/store', storeRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/achievements', achievementRoutes);
-app.use('/api/recommendations', recommendationRoutes);
-app.use('/api/stratum', stratumRoutes);
-app.use('/api/setup', setupRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/statistics', advancedStatisticsRoutes);
+
+// Rutas de escritura con rate limiting
+app.use('/api/consumption', writeLimiter, consumptionRoutes);
+app.use('/api/goals', writeLimiter, goalsRoutes);
+app.use('/api/profile', writeLimiter, profileCustomizationRoutes);
+app.use('/api/household', writeLimiter, householdRoutes);
+app.use('/api/store', writeLimiter, storeRoutes);
+app.use('/api/users', writeLimiter, userRoutes);
+app.use('/api/achievements', writeLimiter, achievementRoutes);
+app.use('/api/recommendations', writeLimiter, recommendationRoutes);
+app.use('/api/stratum', writeLimiter, stratumRoutes);
+app.use('/api/setup', writeLimiter, setupRoutes);
+app.use('/api/notifications', writeLimiter, notificationRoutes);
+
+// Rutas de estadísticas con rate limiting para operaciones pesadas
+app.use('/api/statistics', heavyOperationLimiter, advancedStatisticsRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
@@ -110,18 +168,43 @@ app.use((req, res) => {
 
 // Manejo de errores global
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
+  // Log del error con detalles
+  logger.error({
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    userId: req.user?.uid || 'anonymous',
+  });
+
+  // Respuesta al cliente (sin exponer detalles internos en producción)
+  const statusCode = err.status || err.statusCode || 500;
+  const response = {
     success: false,
     message: err.message || 'Error interno del servidor',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+  };
+
+  // Solo incluir stack trace en desarrollo
+  if (env.isDevelopment) {
+    response.stack = err.stack;
+    response.details = err.details || null;
+  }
+
+  // Si es un error de validación, incluir detalles
+  if (err.name === 'ValidationError' || err.name === 'CastError') {
+    response.errors = err.errors || [];
+  }
+
+  res.status(statusCode).json(response);
 });
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📝 Entorno: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  logger.info(`📝 Entorno: ${env.nodeEnv}`);
+  logger.info(`🔒 Rate limiting: Activado`);
+  logger.info(`🛡️  Seguridad: Helmet, CORS, Sanitización activos`);
 });
 
 export default app;

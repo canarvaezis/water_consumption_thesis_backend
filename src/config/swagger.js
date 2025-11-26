@@ -31,8 +31,8 @@ const options = {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: 'Ingresa el token JWT obtenido al iniciar sesión',
+          bearerFormat: 'Firebase ID Token',
+          description: 'Ingresa el Firebase ID Token obtenido al iniciar sesión con Firebase Auth',
         },
       },
       schemas: {
@@ -127,8 +127,8 @@ const options = {
                 },
                 token: {
                   type: 'string',
-                  description: 'Token JWT para autenticación',
-                  example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                  description: 'Firebase ID Token para autenticación',
+                  example: 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjEyMzQ1NiIsInR5cCI6IkpXVCJ9...',
                 },
               },
             },
