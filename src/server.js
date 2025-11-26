@@ -19,6 +19,7 @@ import achievementRoutes from './routes/achievement.routes.js';
 import recommendationRoutes from './routes/recommendation.routes.js';
 import stratumRoutes from './routes/stratum.routes.js';
 import setupRoutes from './routes/setup.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
 
 dotenv.config();
 
@@ -95,6 +96,7 @@ app.use('/api/achievements', achievementRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/stratum', stratumRoutes);
 app.use('/api/setup', setupRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {
