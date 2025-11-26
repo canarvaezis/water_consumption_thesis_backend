@@ -54,7 +54,7 @@ export class StoreController {
    */
   static async getItems(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const items = await StoreService.getItems(userId);
       
       res.json({
@@ -77,7 +77,7 @@ export class StoreController {
    */
   static async getItemById(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const { itemId } = req.params;
       const item = await StoreService.getItemById(userId, itemId);
       
@@ -100,7 +100,7 @@ export class StoreController {
    */
   static async getItemsByCategory(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const { categoryId } = req.params;
       const items = await StoreService.getItemsByCategory(userId, categoryId);
       
@@ -124,7 +124,7 @@ export class StoreController {
    */
   static async purchaseItem(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const { storeItemId } = req.body;
 
       if (!storeItemId) {
@@ -166,7 +166,7 @@ export class StoreController {
    */
   static async getUserInventory(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const inventory = await StoreService.getUserInventory(userId);
       
       res.json({
@@ -187,7 +187,7 @@ export class StoreController {
    */
   static async hasItem(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const { itemId } = req.params;
       const hasItem = await StoreService.hasItem(userId, itemId);
       
@@ -211,7 +211,7 @@ export class StoreController {
    */
   static async getFeaturedItems(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const items = await StoreService.getFeaturedItems(userId);
       
       res.json({
@@ -234,7 +234,7 @@ export class StoreController {
    */
   static async getTransactions(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const { limit, type, startAfter } = req.query;
       
       const options = {
@@ -263,7 +263,7 @@ export class StoreController {
    */
   static async addPoints(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.uid;
       const { points, description } = req.body;
 
       if (!points || points <= 0) {
