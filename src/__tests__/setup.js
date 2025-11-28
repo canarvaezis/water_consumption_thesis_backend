@@ -17,17 +17,3 @@ process.env.CORS_ORIGIN = '*';
 // Suprimir logs durante tests
 process.env.LOG_LEVEL = 'error';
 
-// Mock de console para evitar logs en tests (opcional)
-// Comentado porque puede interferir con algunos tests
-// Si necesitas silenciar logs, descomenta esto:
-/*
-global.console = {
-  ...console,
-  log: jest.fn(),
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-};
-*/
-

@@ -4,6 +4,26 @@
 
 import { jest } from '@jest/globals';
 import { mockAuth, mockFirestore, mockUser, mockDecodedToken, mockWallet } from '../mocks/firebase.mock.js';
+import { UserModel } from '../../models/user.model.js';
+
+/**
+ * Configurar autenticación válida para un test
+ * NOTA: Esto requiere que Firebase Auth y UserModel estén mockeados correctamente
+ * En tests de integración, esto puede no funcionar si los módulos no están mockeados
+ */
+export const setupValidAuth = () => {
+  mockAuth.verifyIdToken.mockResolvedValue(mockDecodedToken);
+  if (UserModel && UserModel.findById) {
+    UserModel.findById.mockResolvedValue(mockUser);
+  }
+};
+
+/**
+ * Generar token de autenticación válido para tests
+ */
+export const getValidToken = () => {
+  return 'Bearer mock-firebase-token';
+};
 
 /**
  * Configurar mocks de Firebase para un test
