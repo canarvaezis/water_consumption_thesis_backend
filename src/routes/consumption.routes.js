@@ -6,6 +6,7 @@ import express from 'express';
 import { ConsumptionController } from '../controllers/consumption.controller.js';
 import { ConsumptionItemController } from '../controllers/consumption-item.controller.js';
 import { ConsumptionCategoryController } from '../controllers/consumption-category.controller.js';
+import { FaucetTypeController } from '../controllers/faucet-type.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { body } from 'express-validator';
 import { validate } from '../utils/validation.utils.js';
@@ -38,20 +39,25 @@ router.use(authenticateToken);
  *             type: object
  *             required:
  *               - consumptionItemId
- *               - estimatedLiters
+ *               - faucetTypeId
+ *               - durationMinutes
  *             properties:
  *               consumptionItemId:
  *                 type: string
  *                 example: "item123"
- *               timesPerDay:
+ *                 description: "ID de la actividad (ej: baño, lavado de manos)"
+ *               faucetTypeId:
+ *                 type: string
+ *                 example: "faucet123"
+ *                 description: "ID del tipo de grifo utilizado"
+ *               durationMinutes:
  *                 type: number
- *                 example: 2
- *               estimatedLiters:
- *                 type: number
- *                 example: 50
+ *                 example: 7
+ *                 description: "Duración de la actividad en minutos"
  *               householdId:
  *                 type: string
  *                 example: "household123"
+ *                 description: "ID del hogar (opcional)"
  *     responses:
  *       201:
  *         description: Consumo registrado exitosamente
@@ -63,17 +69,17 @@ router.post(
   [
     body('consumptionItemId')
       .notEmpty()
-      .withMessage('ID de item de consumo es requerido')
+      .withMessage('ID de actividad de consumo es requerido')
       .isString(),
-    body('estimatedLiters')
+    body('faucetTypeId')
       .notEmpty()
-      .withMessage('Litros estimados es requerido')
+      .withMessage('ID de tipo de grifo es requerido')
+      .isString(),
+    body('durationMinutes')
+      .notEmpty()
+      .withMessage('Duración en minutos es requerida')
       .isFloat({ min: 0.1 })
-      .withMessage('Litros estimados debe ser un número positivo'),
-    body('timesPerDay')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Veces por día debe ser un número entero positivo'),
+      .withMessage('La duración debe ser un número positivo mayor a 0'),
     body('householdId')
       .optional()
       .isString(),
@@ -145,10 +151,12 @@ router.get('/sessions/today', ConsumptionController.getTodaySession);
  *           schema:
  *             type: object
  *             properties:
- *               estimatedLiters:
+ *               durationMinutes:
  *                 type: number
- *               timesPerDay:
- *                 type: number
+ *                 description: "Duración de la actividad en minutos"
+ *               faucetTypeId:
+ *                 type: string
+ *                 description: "ID del tipo de grifo utilizado"
  *     responses:
  *       200:
  *         description: Detalle actualizado exitosamente
@@ -156,14 +164,14 @@ router.get('/sessions/today', ConsumptionController.getTodaySession);
 router.put(
   '/details/:sessionId/:detailId',
   [
-    body('estimatedLiters')
+    body('durationMinutes')
       .optional()
       .isFloat({ min: 0.1 })
-      .withMessage('Litros estimados debe ser un número positivo'),
-    body('timesPerDay')
+      .withMessage('La duración debe ser un número positivo mayor a 0'),
+    body('faucetTypeId')
       .optional()
-      .isInt({ min: 1 })
-      .withMessage('Veces por día debe ser un número entero positivo'),
+      .isString()
+      .withMessage('ID de tipo de grifo debe ser una cadena de texto'),
     validate,
   ],
   ConsumptionController.updateDetail
@@ -373,6 +381,47 @@ router.get('/categories', ConsumptionCategoryController.getCategories);
  *         description: Categoría de consumo
  */
 router.get('/categories/:categoryId', ConsumptionCategoryController.getCategory);
+
+// Tipos de grifos
+/**
+ * @swagger
+ * /api/consumption/faucet-types:
+ *   get:
+ *     summary: Obtener todos los tipos de grifos disponibles
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: includeInactive
+ *         schema:
+ *           type: boolean
+ *         description: Incluir tipos de grifos inactivos
+ *     responses:
+ *       200:
+ *         description: Lista de tipos de grifos
+ */
+router.get('/faucet-types', FaucetTypeController.getFaucetTypes);
+
+/**
+ * @swagger
+ * /api/consumption/faucet-types/{faucetTypeId}:
+ *   get:
+ *     summary: Obtener tipo de grifo por ID
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: faucetTypeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Tipo de grifo
+ */
+router.get('/faucet-types/:faucetTypeId', FaucetTypeController.getFaucetType);
 
 export default router;
 

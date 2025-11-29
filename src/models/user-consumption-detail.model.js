@@ -7,9 +7,10 @@
  * {
  *   userConsumptionDetailId: string (auto-generado)
  *   consumptionSessionId: string
- *   consumptionItemId: string
- *   timesPerDay: number (veces que hizo la actividad ese día)
- *   estimatedLiters: number (total de litros de ese item ese día)
+ *   consumptionItemId: string (ID de la actividad, ej: "baño", "lavado de manos")
+ *   faucetTypeId: string (ID del tipo de grifo utilizado)
+ *   durationMinutes: number (duración de la actividad en minutos)
+ *   calculatedLiters: number (litros calculados: durationMinutes × litersPerMinute del grifo)
  *   createdAt: Timestamp
  * }
  */
@@ -32,8 +33,9 @@ export class UserConsumptionDetailModel {
       userConsumptionDetailId: detailRef.id,
       consumptionSessionId: sessionId,
       consumptionItemId: detailData.consumptionItemId,
-      timesPerDay: detailData.timesPerDay || 1,
-      estimatedLiters: detailData.estimatedLiters,
+      faucetTypeId: detailData.faucetTypeId,
+      durationMinutes: detailData.durationMinutes,
+      calculatedLiters: detailData.calculatedLiters,
       createdAt: Timestamp.now(),
     };
     

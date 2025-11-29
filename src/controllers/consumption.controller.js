@@ -14,12 +14,12 @@ export class ConsumptionController {
    */
   static addConsumption = asyncHandler(async (req, res) => {
     const userId = req.user.uid;
-    const { consumptionItemId, timesPerDay, estimatedLiters, householdId } = req.body;
+    const { consumptionItemId, faucetTypeId, durationMinutes, householdId } = req.body;
     
     const result = await ConsumptionService.addManualConsumption(userId, {
       consumptionItemId,
-      timesPerDay: timesPerDay || 1,
-      estimatedLiters,
+      faucetTypeId,
+      durationMinutes,
       householdId: householdId || null,
       sessionDate: new Date(),
     });
@@ -61,15 +61,15 @@ export class ConsumptionController {
   static updateDetail = asyncHandler(async (req, res) => {
     const userId = req.user.uid;
     const { sessionId, detailId } = req.params;
-    const { estimatedLiters, timesPerDay } = req.body;
+    const { durationMinutes, faucetTypeId } = req.body;
     
     const updatedDetail = await ConsumptionService.updateDetail(
       detailId,
       sessionId,
       userId,
       {
-        estimatedLiters,
-        timesPerDay,
+        durationMinutes,
+        faucetTypeId,
       }
     );
     
