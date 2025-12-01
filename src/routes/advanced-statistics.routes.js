@@ -4,6 +4,7 @@
 
 import express from 'express';
 import { AdvancedStatisticsController } from '../controllers/advanced-statistics.controller.js';
+import { GlobalStatisticsController } from '../controllers/global-statistics.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { query } from 'express-validator';
 import { validateRequest } from '../middleware/validation.middleware.js';
@@ -300,6 +301,165 @@ router.get(
   ],
   validateRequest,
   AdvancedStatisticsController.exportData
+);
+
+/**
+ * @swagger
+ * /api/statistics/global/average:
+ *   get:
+ *     summary: Obtener promedio de consumo de todos los usuarios
+ *     tags: [Advanced Statistics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha de inicio (YYYY-MM-DD). Si no se especifica, se usa el último mes
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Fecha de fin (YYYY-MM-DD). Si no se especifica, se usa el último mes
+ *     responses:
+ *       200:
+ *         description: Promedio global de consumo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     averageLitersPerUser:
+ *                       type: number
+ *                       description: Promedio de litros por usuario
+ *                     averageLitersPerDay:
+ *                       type: number
+ *                       description: Promedio de litros por día
+ *                     totalUsers:
+ *                       type: number
+ *                       description: Total de usuarios en el sistema
+ *                     usersWithConsumption:
+ *                       type: number
+ *                       description: Usuarios con consumo en el período
+ *                     totalSessions:
+ *                       type: number
+ *                       description: Total de sesiones de consumo
+ *                     totalLiters:
+ *                       type: number
+ *                       description: Total de litros consumidos
+ *                     period:
+ *                       type: object
+ *                       properties:
+ *                         start:
+ *                           type: string
+ *                           format: date
+ *                         end:
+ *                           type: string
+ *                           format: date
+ *                         days:
+ *                           type: number
+ */
+router.get(
+  '/global/average',
+  [
+    query('startDate')
+      .optional()
+      .isISO8601()
+      .withMessage('startDate debe ser una fecha válida (YYYY-MM-DD)'),
+    query('endDate')
+      .optional()
+      .isISO8601()
+      .withMessage('endDate debe ser una fecha válida (YYYY-MM-DD)'),
+  ],
+  validateRequest,
+  GlobalStatisticsController.getGlobalAverage
+);
+
+/**
+ * @swagger
+ * /api/statistics/global/monthly-per-user:
+ *   get:
+ *     summary: Obtener promedio de consumo mensual de cada usuario
+ *     tags: [Advanced Statistics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *           minimum: 2000
+ *           maximum: 2100
+ *         description: Año para obtener estadísticas (por defecto año actual)
+ *     responses:
+ *       200:
+ *         description: Promedio mensual de consumo por usuario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                       userName:
+ *                         type: string
+ *                       userEmail:
+ *                         type: string
+ *                       year:
+ *                         type: integer
+ *                       monthlyAverages:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             month:
+ *                               type: integer
+ *                             monthName:
+ *                               type: string
+ *                             year:
+ *                               type: integer
+ *                             totalLiters:
+ *                               type: number
+ *                             averagePerDay:
+ *                               type: number
+ *                             sessionCount:
+ *                               type: integer
+ *                             daysInMonth:
+ *                               type: integer
+ *                       yearlyAverage:
+ *                         type: number
+ *                       yearlyTotal:
+ *                         type: number
+ *                 count:
+ *                   type: integer
+ */
+router.get(
+  '/global/monthly-per-user',
+  [
+    query('year')
+      .optional()
+      .isInt({ min: 2000, max: 2100 })
+      .withMessage('year debe ser un número entre 2000 y 2100'),
+  ],
+  validateRequest,
+  GlobalStatisticsController.getMonthlyAveragePerUser
 );
 
 export default router;

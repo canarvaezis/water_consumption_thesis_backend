@@ -158,5 +158,69 @@ export class ConsumptionSessionModel {
     await db.collection(COLLECTION_NAME).doc(sessionId).delete();
     return true;
   }
+
+  /**
+   * Obtener todas las sesiones en un rango de fechas (sin filtrar por usuario)
+   */
+  static async findAllByDateRange(startDate, endDate) {
+    const start = startDate instanceof Date 
+      ? Timestamp.fromDate(startDate) 
+      : (startDate instanceof Timestamp ? startDate : Timestamp.fromDate(new Date(startDate)));
+    const end = endDate instanceof Date 
+      ? Timestamp.fromDate(endDate) 
+      : (endDate instanceof Timestamp ? endDate : Timestamp.fromDate(new Date(endDate)));
+    
+    const snapshot = await db
+      .collection(COLLECTION_NAME)
+      .where('consumptionDate', '>=', start)
+      .where('consumptionDate', '<=', end)
+      .orderBy('consumptionDate', 'asc')
+      .get();
+    
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+
+  /**
+   * Obtener todas las sesiones agrupadas por mes para un usuario
+   */
+  static async findByUserIdGroupedByMonth(userId, year = null) {
+    // Si no se especifica año, usar el año actual
+    const currentYear = year || new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+    const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+    
+    const start = Timestamp.fromDate(startOfYear);
+    const end = Timestamp.fromDate(endOfYear);
+    
+    const snapshot = await db
+      .collection(COLLECTION_NAME)
+      .where('userId', '==', userId)
+      .where('consumptionDate', '>=', start)
+      .where('consumptionDate', '<=', end)
+      .orderBy('consumptionDate', 'asc')
+      .get();
+    
+    const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Agrupar por mes
+    const groupedByMonth = {};
+    sessions.forEach(session => {
+      const sessionDate = session.consumptionDate?.toDate 
+        ? session.consumptionDate.toDate() 
+        : (session.consumptionDate instanceof Date 
+          ? session.consumptionDate 
+          : new Date(session.consumptionDate));
+      
+      const monthKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!groupedByMonth[monthKey]) {
+        groupedByMonth[monthKey] = [];
+      }
+      
+      groupedByMonth[monthKey].push(session);
+    });
+    
+    return groupedByMonth;
+  }
 }
 

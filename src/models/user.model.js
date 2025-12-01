@@ -99,5 +99,13 @@ export class UserModel {
     const user = await this.findByEmail(email);
     return user !== null;
   }
+
+  /**
+   * Obtener todos los usuarios
+   */
+  static async findAll() {
+    const snapshot = await db.collection(COLLECTION_NAME).get();
+    return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+  }
 }
 
