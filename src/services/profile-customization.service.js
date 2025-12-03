@@ -34,7 +34,7 @@ export class ProfileCustomizationService {
     }
 
     // Obtener inventario del usuario
-    const inventory = await InventoryModel.getInventoryByWalletId(userId, wallet.id);
+    const inventory = await InventoryModel.getInventoryByUserId(userId);
     const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
 
     return avatars.map(avatar => ({
@@ -71,7 +71,7 @@ export class ProfileCustomizationService {
     }
 
     // Obtener inventario del usuario
-    const inventory = await InventoryModel.getInventoryByWalletId(userId, wallet.id);
+    const inventory = await InventoryModel.getInventoryByUserId(userId);
     const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
 
     return nicknames.map(nickname => ({
@@ -102,10 +102,8 @@ export class ProfileCustomizationService {
     }
 
     // Verificar que el usuario tiene el item o es un item por defecto
-    const wallet = await WalletModel.findByUserId(userId);
-    
-    if (!item.default && wallet) {
-      const hasItem = await InventoryModel.hasItem(userId, wallet.id, storeItemId);
+    if (!item.default) {
+      const hasItem = await InventoryModel.hasItem(userId, storeItemId);
       if (!hasItem) {
         throw new Error('No tienes este avatar en tu inventario');
       }
@@ -153,10 +151,8 @@ export class ProfileCustomizationService {
     }
 
     // Verificar que el usuario tiene el item o es un item por defecto
-    const wallet = await WalletModel.findByUserId(userId);
-    
-    if (!item.default && wallet) {
-      const hasItem = await InventoryModel.hasItem(userId, wallet.id, storeItemId);
+    if (!item.default) {
+      const hasItem = await InventoryModel.hasItem(userId, storeItemId);
       if (!hasItem) {
         throw new Error('No tienes este nickname en tu inventario');
       }
@@ -199,7 +195,7 @@ export class ProfileCustomizationService {
       };
     }
 
-    const inventory = await InventoryModel.getInventoryByWalletId(userId, wallet.id);
+    const inventory = await InventoryModel.getInventoryByUserId(userId);
     
     // Obtener todos los items por defecto
     const allAvatars = await StoreItemModel.findByCategory('avatar');

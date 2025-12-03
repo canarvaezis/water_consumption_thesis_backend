@@ -16,13 +16,8 @@ export class PointsService {
    * @returns {Promise<boolean>} - true si ya se otorgaron puntos
    */
   static async hasReceivedPoints(userId, milestoneType, milestoneId) {
-    const wallet = await WalletModel.findByUserId(userId);
-    if (!wallet) {
-      return false;
-    }
-
     // Buscar transacciones con descripción que coincida con el milestone
-    const transactions = await WalletTransactionModel.getTransactions(userId, wallet.id, {
+    const transactions = await WalletTransactionModel.getTransactions(userId, {
       limit: 1000,
       type: 'reward',
     });

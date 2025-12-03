@@ -1,12 +1,12 @@
 /**
  * Modelo de Transacciones de Billetera para Firestore
  * 
- * Se almacena como subcolección en users/{uid}/wallet/{walletId}/transactions
+ * Se almacena como subcolección en users/{uid}/transactions
  * 
  * Estructura del documento:
  * {
  *   transactionId: string (auto-generado)
- *   walletId: string
+ *   walletId: string (siempre "main" para referencia)
  *   type: string ("purchase" | "reward" | "admin_add" | "refund")
  *   amount: number (puntos, positivo para ingresos, negativo para gastos)
  *   description: string
@@ -23,21 +23,19 @@ export class WalletTransactionModel {
   /**
    * Crear una nueva transacción
    * @param {string} uid - UID del usuario
-   * @param {string} walletId - ID de la billetera
+   * @param {string} walletId - ID de la billetera (para referencia, normalmente "main")
    * @param {object} transactionData - Datos de la transacción
    */
   static async create(uid, walletId, transactionData) {
     const transactionRef = db
       .collection('users')
       .doc(uid)
-      .collection('wallet')
-      .doc(walletId)
       .collection('transactions')
       .doc();
     
     const transaction = {
       transactionId: transactionRef.id,
-      walletId,
+      walletId: walletId || 'main', // Mantener para referencia
       type: transactionData.type, // "purchase" | "reward" | "admin_add" | "refund"
       amount: transactionData.amount, // Positivo para ingresos, negativo para gastos
       description: transactionData.description || '',
@@ -51,19 +49,16 @@ export class WalletTransactionModel {
   }
 
   /**
-   * Obtener todas las transacciones de una billetera
+   * Obtener todas las transacciones del usuario
    * @param {string} uid - UID del usuario
-   * @param {string} walletId - ID de la billetera
    * @param {object} options - Opciones de consulta
    */
-  static async getTransactions(uid, walletId, options = {}) {
+  static async getTransactions(uid, options = {}) {
     const { limit = 50, startAfter = null, type = null } = options;
     
     let query = db
       .collection('users')
       .doc(uid)
-      .collection('wallet')
-      .doc(walletId)
       .collection('transactions')
       .orderBy('createdAt', 'desc');
     
@@ -92,12 +87,10 @@ export class WalletTransactionModel {
   /**
    * Obtener transacción por ID
    */
-  static async findById(uid, walletId, transactionId) {
+  static async findById(uid, transactionId) {
     const transactionDoc = await db
       .collection('users')
       .doc(uid)
-      .collection('wallet')
-      .doc(walletId)
       .collection('transactions')
       .doc(transactionId)
       .get();
@@ -117,12 +110,10 @@ export class WalletTransactionModel {
   /**
    * Obtener resumen de transacciones
    */
-  static async getTransactionSummary(uid, walletId, startDate = null, endDate = null) {
+  static async getTransactionSummary(uid, startDate = null, endDate = null) {
     let query = db
       .collection('users')
       .doc(uid)
-      .collection('wallet')
-      .doc(walletId)
       .collection('transactions');
     
     if (startDate) {

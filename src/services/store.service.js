@@ -57,7 +57,7 @@ export class StoreService {
     }
 
     // Obtener inventario del usuario
-    const inventory = await InventoryModel.getInventoryByWalletId(userId, wallet.id);
+    const inventory = await InventoryModel.getInventoryByUserId(userId);
     const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
 
     return items.map(item => ({
@@ -85,12 +85,9 @@ export class StoreService {
       throw new Error('Item no encontrado');
     }
 
-    const wallet = await WalletModel.findByUserId(userId);
     let owned = item.default || false;
 
-    if (wallet) {
-      owned = owned || await InventoryModel.hasItem(userId, wallet.id, itemId);
-    }
+    owned = owned || await InventoryModel.hasItem(userId, itemId);
 
     return {
       id: item.id,
@@ -126,13 +123,8 @@ export class StoreService {
       }
     }
 
-    const wallet = await WalletModel.findByUserId(userId);
-    let ownedItemIds = new Set();
-
-    if (wallet) {
-      const inventory = await InventoryModel.getInventoryByWalletId(userId, wallet.id);
-      ownedItemIds = new Set(inventory.map(item => item.storeItemId));
-    }
+    const inventory = await InventoryModel.getInventoryByUserId(userId);
+    const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
 
     return items.map(item => ({
       id: item.id,
@@ -169,7 +161,7 @@ export class StoreService {
       }
 
       // Verificar si ya lo tiene
-      const hasItem = await InventoryModel.hasItem(userId, wallet.id, storeItemId);
+      const hasItem = await InventoryModel.hasItem(userId, storeItemId);
       if (hasItem) {
         throw new Error('Ya tienes este item en tu inventario');
       }
@@ -208,7 +200,7 @@ export class StoreService {
     }
 
     // Verificar si ya lo tiene
-    const hasItem = await InventoryModel.hasItem(userId, wallet.id, storeItemId);
+    const hasItem = await InventoryModel.hasItem(userId, storeItemId);
     if (hasItem) {
       throw new Error('Ya tienes este item en tu inventario');
     }
@@ -260,7 +252,7 @@ export class StoreService {
       };
     }
 
-    const inventory = await InventoryModel.getInventoryByWalletId(userId, wallet.id);
+    const inventory = await InventoryModel.getInventoryByUserId(userId);
     
     // Obtener detalles de los items
     const items = await Promise.all(
@@ -302,7 +294,7 @@ export class StoreService {
       return item ? (item.default || false) : false;
     }
 
-    const hasItem = await InventoryModel.hasItem(userId, wallet.id, storeItemId);
+    const hasItem = await InventoryModel.hasItem(userId, storeItemId);
     if (hasItem) {
       return true;
     }
@@ -328,11 +320,8 @@ export class StoreService {
       .sort((a, b) => (b.price || 0) - (a.price || 0))
       .slice(0, 10); // Top 10 items más caros como destacados
     
-    let ownedItemIds = new Set();
-    if (wallet) {
-      const inventory = await InventoryModel.getInventoryByWalletId(userId, wallet.id);
-      ownedItemIds = new Set(inventory.map(item => item.storeItemId));
-    }
+    const inventory = await InventoryModel.getInventoryByUserId(userId);
+    const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
 
     return featuredItems.map(item => ({
       id: item.id,
@@ -368,8 +357,8 @@ export class StoreService {
       };
     }
 
-    const transactions = await WalletTransactionModel.getTransactions(userId, wallet.id, options);
-    const summary = await WalletTransactionModel.getTransactionSummary(userId, wallet.id);
+    const transactions = await WalletTransactionModel.getTransactions(userId, options);
+    const summary = await WalletTransactionModel.getTransactionSummary(userId);
 
     return {
       transactions,
