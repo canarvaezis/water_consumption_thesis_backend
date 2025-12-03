@@ -5,7 +5,7 @@
  * users/{uid}/wallet/{walletId}
  * 
  * El userId está implícito en la ruta (uid del documento padre)
- * El walletId es el ID del documento en la subcolección
+ * El walletId es siempre "main" (ID fijo, un solo wallet por usuario)
  * 
  * Estructura del documento:
  * {
@@ -19,13 +19,14 @@ import { db } from '../config/firebase.js';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const SUBCOLLECTION_NAME = 'wallet';
+const DEFAULT_DOCUMENT_ID = 'main';
 
 export class WalletModel {
   /**
    * Crear una nueva billetera para un usuario (como subcolección)
    */
   static async create(uid, initialBalance = 0) {
-    const walletRef = db.collection('users').doc(uid).collection(SUBCOLLECTION_NAME).doc();
+    const walletRef = db.collection('users').doc(uid).collection(SUBCOLLECTION_NAME).doc(DEFAULT_DOCUMENT_ID);
     const wallet = {
       balance: initialBalance,
       createdAt: Timestamp.now(),
@@ -38,22 +39,21 @@ export class WalletModel {
 
   /**
    * Obtener billetera por UID del usuario
-   * Retorna la primera billetera del usuario (normalmente solo hay una)
+   * Retorna la billetera del usuario (documento "main")
    */
   static async findByUserId(uid) {
-    const snapshot = await db
+    const walletDoc = await db
       .collection('users')
       .doc(uid)
       .collection(SUBCOLLECTION_NAME)
-      .limit(1)
+      .doc(DEFAULT_DOCUMENT_ID)
       .get();
     
-    if (snapshot.empty) {
+    if (!walletDoc.exists) {
       return null;
     }
     
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() };
+    return { id: walletDoc.id, ...walletDoc.data() };
   }
 
   /**
