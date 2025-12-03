@@ -8,6 +8,7 @@ import { StoreItemModel } from '../models/store-item.model.js';
 import { InventoryModel } from '../models/inventory.model.js';
 import { UserModel } from '../models/user.model.js';
 import { WalletModel } from '../models/wallet.model.js';
+import { PointsService } from './points.service.js';
 
 export class ProfileCustomizationService {
   /**
@@ -110,11 +111,20 @@ export class ProfileCustomizationService {
       }
     }
 
+    // Obtener usuario actual para verificar si es primera vez
+    const currentUser = await UserModel.findById(userId);
+    
     // Aplicar avatar al perfil
     const avatarUrl = item.asset_url || item.assetUrl;
     const updatedUser = await UserModel.update(userId, {
       avatarUrl,
     });
+
+    // Verificar si es la primera vez que se configura un avatar (antes era null)
+    if (!currentUser.avatarUrl) {
+      // Otorgar puntos por configurar avatar (solo una vez)
+      await PointsService.awardAvatarSetPoints(userId);
+    }
 
     return {
       user: updatedUser,
@@ -152,11 +162,20 @@ export class ProfileCustomizationService {
       }
     }
 
+    // Obtener usuario actual para verificar si es primera vez
+    const currentUser = await UserModel.findById(userId);
+    
     // Aplicar nickname al perfil
     const nickname = item.name;
     const updatedUser = await UserModel.update(userId, {
       nickname,
     });
+
+    // Verificar si es la primera vez que se configura un nickname (antes era null)
+    if (!currentUser.nickname) {
+      // Otorgar puntos por configurar nickname (solo una vez)
+      await PointsService.awardNicknameSetPoints(userId);
+    }
 
     return {
       user: updatedUser,

@@ -6,6 +6,7 @@
 
 import { UserModel } from '../models/user.model.js';
 import { StratumHistoryModel } from '../models/stratum-history.model.js';
+import { PointsService } from './points.service.js';
 import { EMCALI_RATES } from '../utils/water-calculations.utils.js';
 
 export class StratumService {
@@ -59,6 +60,12 @@ export class StratumService {
     const updatedUser = await UserModel.update(userId, {
       stratum: newStratum,
     });
+
+    // Si es la primera vez que se configura el estrato (previousStratum es null)
+    if (previousStratum === null) {
+      // Otorgar puntos por configurar estrato (solo una vez)
+      await PointsService.awardStratumSetPoints(userId);
+    }
 
     return {
       stratum: newStratum,

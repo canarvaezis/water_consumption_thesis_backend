@@ -8,6 +8,7 @@ import { HouseholdModel } from '../models/household.model.js';
 import { UserHouseholdModel } from '../models/user-household.model.js';
 import { UserModel } from '../models/user.model.js';
 import { ConsumptionSessionModel } from '../models/consumption-session.model.js';
+import { PointsService } from './points.service.js';
 
 export class HouseholdService {
   /**
@@ -29,6 +30,9 @@ export class HouseholdService {
 
     // Agregar al creador como admin
     await UserHouseholdModel.addUserToHousehold(userId, household.id, 'admin');
+
+    // Otorgar puntos por crear familia
+    await PointsService.awardHouseholdCreatePoints(userId, household.id);
 
     return household;
   }
@@ -57,6 +61,9 @@ export class HouseholdService {
 
     // Agregar usuario como miembro
     await UserHouseholdModel.addUserToHousehold(userId, household.id, 'member');
+
+    // Otorgar puntos por unirse a familia
+    await PointsService.awardHouseholdJoinPoints(userId, household.id);
 
     return household;
   }

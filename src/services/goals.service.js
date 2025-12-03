@@ -6,6 +6,7 @@
 
 import { UserModel } from '../models/user.model.js';
 import { ConsumptionService } from './consumption.service.js';
+import { PointsService } from './points.service.js';
 
 export class GoalsService {
   /**
@@ -50,7 +51,21 @@ export class GoalsService {
       throw new Error('Debe proporcionar al menos una meta para actualizar');
     }
     
+    // Obtener usuario actual para verificar si es primera vez
+    const currentUser = await UserModel.findById(userId);
+    
     const updatedUser = await UserModel.update(userId, updateData);
+    
+    // Verificar si es la primera vez que se establecen las metas
+    if (dailyGoal !== undefined && currentUser.dailyGoal === null && dailyGoal !== null) {
+      // Otorgar puntos por establecer meta diaria (solo una vez)
+      await PointsService.awardDailyGoalSetPoints(userId);
+    }
+    
+    if (monthlyGoal !== undefined && currentUser.monthlyGoal === null && monthlyGoal !== null) {
+      // Otorgar puntos por establecer meta mensual (solo una vez)
+      await PointsService.awardMonthlyGoalSetPoints(userId);
+    }
     
     return {
       dailyGoal: updatedUser.dailyGoal || null,
@@ -116,6 +131,27 @@ export class GoalsService {
     // Proyección mensual basada en el promedio actual
     const projectedMonthlyConsumption = averageDailyConsumption * daysInMonth;
     
+    // Verificar y otorgar puntos por cumplir metas
+    const dailyAchieved = goals.dailyGoal 
+      ? dailyConsumption <= goals.dailyGoal
+      : null;
+    const monthlyAchieved = goals.monthlyGoal
+      ? monthlyConsumption <= goals.monthlyGoal
+      : null;
+    
+    // Verificar si es el final del día (después de las 23:00) para otorgar puntos diarios
+    const currentHour = now.getHours();
+    if (dailyAchieved && currentHour >= 23) {
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      await PointsService.awardDailyGoalPoints(userId, today);
+    }
+    
+    // Verificar si es el último día del mes para otorgar puntos mensuales
+    if (monthlyAchieved && daysRemaining === 0) {
+      await PointsService.awardMonthlyGoalPoints(userId, now.getFullYear(), now.getMonth() + 1);
+    }
+    
     return {
       goals,
       daily: {
@@ -126,9 +162,7 @@ export class GoalsService {
           ? Math.max(0, goals.dailyGoal - dailyConsumption)
           : null,
         percentage: dailyProgress,
-        achieved: goals.dailyGoal 
-          ? dailyConsumption <= goals.dailyGoal
-          : null,
+        achieved: dailyAchieved,
       },
       monthly: {
         consumption: monthlyConsumption,
@@ -138,9 +172,7 @@ export class GoalsService {
           ? Math.max(0, goals.monthlyGoal - monthlyConsumption)
           : null,
         percentage: monthlyProgress,
-        achieved: goals.monthlyGoal
-          ? monthlyConsumption <= goals.monthlyGoal
-          : null,
+        achieved: monthlyAchieved,
         daysRemaining,
         averageDailyConsumption,
         projectedMonthlyConsumption,

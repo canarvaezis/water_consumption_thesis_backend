@@ -13,6 +13,8 @@ import { UserMetricsModel } from '../models/user-metrics.model.js';
 import { UserHouseholdModel } from '../models/user-household.model.js';
 import { WalletModel } from '../models/wallet.model.js';
 import { WalletTransactionModel } from '../models/wallet-transaction.model.js';
+import { PointsService } from './points.service.js';
+import { GoalsService } from './goals.service.js';
 import { calculateWaterCost, updateConsumptionStreak, getCurrentStreak } from '../utils/water-calculations.utils.js';
 import { dateToTimestamp } from '../utils/firestore.utils.js';
 
@@ -142,8 +144,14 @@ export class ConsumptionService {
     
     // Actualizar racha de consumo del usuario
     const metrics = await UserMetricsModel.findByUserId(userId);
+    let previousStreak = 0;
+    let newStreak = 0;
+    
     if (metrics) {
+      previousStreak = metrics.consumptionStreak || 0;
       const streakUpdate = updateConsumptionStreak(metrics, detailData.sessionDate || new Date());
+      newStreak = streakUpdate.consumptionStreak;
+      
       await UserMetricsModel.update(userId, {
         consumptionStreak: streakUpdate.consumptionStreak,
         lastConsumptionDate: dateToTimestamp(streakUpdate.lastConsumptionDate),
@@ -152,6 +160,8 @@ export class ConsumptionService {
     } else {
       // Si no existen métricas, crearlas
       const streakUpdate = updateConsumptionStreak({}, detailData.sessionDate || new Date());
+      newStreak = streakUpdate.consumptionStreak;
+      
       await UserMetricsModel.create(userId, {
         consumptionStreak: streakUpdate.consumptionStreak,
         lastConsumptionDate: dateToTimestamp(streakUpdate.lastConsumptionDate),
@@ -159,8 +169,118 @@ export class ConsumptionService {
       });
     }
     
+    // Otorgar puntos por hito de racha (cada 10 días, y cada 100 días 4x más)
+    let streakBonusPoints = 0;
+    let streakBonusDescription = '';
+    
+    if (newStreak > 0 && newStreak % 10 === 0) {
+      // Verificar que la racha anterior no era ya un múltiplo de 10 (para no dar puntos repetidos)
+      const previousWasMultipleOf10 = previousStreak > 0 && previousStreak % 10 === 0;
+      
+      if (!previousWasMultipleOf10) {
+        // Verificar si es múltiplo de 100 (cada 100 días)
+        if (newStreak % 100 === 0) {
+          // Bono especial: 4 veces los puntos (200 puntos)
+          streakBonusPoints = 200;
+          streakBonusDescription = `Bono especial por ${newStreak} días consecutivos de registro`;
+        } else {
+          // Bono normal: 50 puntos por cada 10 días
+          streakBonusPoints = 50;
+          streakBonusDescription = `Bono por ${newStreak} días consecutivos de registro`;
+        }
+        
+        // Asegurar que el wallet existe
+        if (!wallet) {
+          wallet = await WalletModel.findByUserId(userId);
+          if (!wallet) {
+            wallet = await WalletModel.create(userId, 0);
+          }
+        }
+        
+        // Agregar puntos por racha
+        await WalletModel.addPoints(userId, wallet.id, streakBonusPoints);
+        
+        // Registrar transacción
+        await WalletTransactionModel.create(userId, wallet.id, {
+          type: 'reward',
+          amount: streakBonusPoints,
+          description: streakBonusDescription,
+          referenceId: session.id,
+        });
+      }
+    }
+    
+    // Verificar metas diarias/mensuales y otorgar puntos si se cumplen
+    try {
+      const goalsProgress = await GoalsService.getGoalsProgress(userId);
+      const now = new Date();
+      
+      // Verificar meta diaria (si se cumplió y es después de las 22:00)
+      if (goalsProgress.daily?.achieved && goalsProgress.daily.goal && now.getHours() >= 22) {
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        await PointsService.awardDailyGoalPoints(userId, today);
+      }
+      
+      // Verificar meta mensual (si se cumplió y es el último día del mes)
+      if (goalsProgress.monthly?.achieved && goalsProgress.monthly.goal) {
+        const daysRemaining = goalsProgress.monthly.daysRemaining || 0;
+        if (daysRemaining === 0) {
+          await PointsService.awardMonthlyGoalPoints(userId, now.getFullYear(), now.getMonth() + 1);
+        }
+      }
+    } catch (error) {
+      // Si hay error al verificar metas, no afectar el flujo principal
+      console.error('Error verificando metas para puntos:', error);
+    }
+    
+    // Verificar semana completa de registros (7 días consecutivos)
+    try {
+      const metrics = await UserMetricsModel.findByUserId(userId);
+      if (metrics && metrics.consumptionStreak >= 7) {
+        // Calcular inicio de semana (lunes)
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - daysToMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        
+        // Verificar si hay registros en los últimos 7 días
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(today.getDate() - 6);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+        
+        const recentSessions = await ConsumptionSessionModel.findByDateRange(
+          userId,
+          sevenDaysAgo,
+          today
+        );
+        
+        // Verificar que hay al menos una sesión en cada uno de los últimos 7 días
+        const uniqueDays = new Set();
+        recentSessions.forEach(session => {
+          const sessionDate = session.consumptionDate?.toDate 
+            ? session.consumptionDate.toDate() 
+            : new Date(session.consumptionDate);
+          const dayKey = sessionDate.toISOString().split('T')[0];
+          uniqueDays.add(dayKey);
+        });
+        
+        if (uniqueDays.size >= 7) {
+          await PointsService.awardWeeklyConsistencyPoints(userId, weekStart);
+        }
+      }
+    } catch (error) {
+      // Si hay error al verificar semana completa, no afectar el flujo principal
+      console.error('Error verificando semana completa:', error);
+    }
+    
     // Obtener wallet actualizado para incluir en la respuesta
     const updatedWallet = await WalletModel.findByUserId(userId);
+    
+    // Calcular total de puntos ganados (registro + bono de racha si aplica)
+    const totalPointsEarned = pointsToAward + streakBonusPoints;
     
     return { 
       session, 
@@ -172,7 +292,11 @@ export class ConsumptionService {
           litersPerMinute: faucetType.litersPerMinute,
         },
       },
-      pointsEarned: pointsToAward,
+      pointsEarned: totalPointsEarned,
+      pointsBreakdown: {
+        registration: pointsToAward,
+        streakBonus: streakBonusPoints,
+      },
       wallet: {
         balance: updatedWallet?.balance || 0,
       },

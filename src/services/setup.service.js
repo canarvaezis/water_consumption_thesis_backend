@@ -6,6 +6,7 @@
 
 import { UserSetupItemModel } from '../models/user-setup-item.model.js';
 import { ConsumptionItemModel } from '../models/consumption-item.model.js';
+import { PointsService } from './points.service.js';
 
 export class SetupService {
   /**
@@ -62,6 +63,13 @@ export class SetupService {
       consumptionItemId,
       hasItem,
     });
+
+    // Verificar si el setup está completo (al menos 3 items configurados)
+    const allSetupItems = await UserSetupItemModel.getSetupItemsByUserId(userId);
+    if (allSetupItems.length >= 3) {
+      // Otorgar puntos por completar setup (solo una vez)
+      await PointsService.awardSetupCompletePoints(userId);
+    }
 
     return {
       ...setupItem,
