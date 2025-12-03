@@ -11,6 +11,8 @@ import { FaucetTypeModel } from '../models/faucet-type.model.js';
 import { UserModel } from '../models/user.model.js';
 import { UserMetricsModel } from '../models/user-metrics.model.js';
 import { UserHouseholdModel } from '../models/user-household.model.js';
+import { WalletModel } from '../models/wallet.model.js';
+import { WalletTransactionModel } from '../models/wallet-transaction.model.js';
 import { calculateWaterCost, updateConsumptionStreak, getCurrentStreak } from '../utils/water-calculations.utils.js';
 import { dateToTimestamp } from '../utils/firestore.utils.js';
 
@@ -101,6 +103,10 @@ export class ConsumptionService {
     // Obtener o crear sesión del día
     const session = await this.getOrCreateTodaySession(userId, householdId);
     
+    // Verificar si es el primer detalle de la sesión (para otorgar puntos)
+    const existingDetails = await UserConsumptionDetailModel.getDetailsBySessionId(session.id);
+    const isFirstDetail = existingDetails.length === 0;
+    
     // Crear detalle con litros calculados automáticamente
     const detail = await UserConsumptionDetailModel.addDetail(session.id, {
       consumptionItemId: detailData.consumptionItemId,
@@ -111,6 +117,28 @@ export class ConsumptionService {
     
     // Recalcular totales de la sesión
     await this.recalculateSessionTotals(session.id);
+    
+    // Otorgar puntos por registrar consumo
+    // Más puntos si es el primer registro del día, menos si son registros adicionales
+    const pointsToAward = isFirstDetail ? 15 : 5; // 15 puntos primer registro, 5 puntos adicionales
+    
+    let wallet = await WalletModel.findByUserId(userId);
+    if (!wallet) {
+      wallet = await WalletModel.create(userId, 0);
+    }
+    
+    // Agregar puntos a la billetera
+    await WalletModel.addPoints(userId, wallet.id, pointsToAward);
+    
+    // Registrar transacción
+    await WalletTransactionModel.create(userId, wallet.id, {
+      type: 'reward',
+      amount: pointsToAward,
+      description: isFirstDetail 
+        ? 'Puntos por registrar consumo del día' 
+        : 'Puntos por registro adicional de consumo',
+      referenceId: session.id,
+    });
     
     // Actualizar racha de consumo del usuario
     const metrics = await UserMetricsModel.findByUserId(userId);
@@ -131,6 +159,9 @@ export class ConsumptionService {
       });
     }
     
+    // Obtener wallet actualizado para incluir en la respuesta
+    const updatedWallet = await WalletModel.findByUserId(userId);
+    
     return { 
       session, 
       detail: {
@@ -140,6 +171,10 @@ export class ConsumptionService {
           name: faucetType.name,
           litersPerMinute: faucetType.litersPerMinute,
         },
+      },
+      pointsEarned: pointsToAward,
+      wallet: {
+        balance: updatedWallet?.balance || 0,
       },
     };
   }
