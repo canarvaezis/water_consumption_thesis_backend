@@ -7,7 +7,7 @@
  * {
  *   notificationId: string (auto-generado)
  *   userId: string
- *   type: string ('achievement' | 'consumption' | 'goal' | 'household' | 'system' | 'mission')
+ *   type: string ('consumption' | 'goal' | 'household' | 'system' | 'mission')
  *   title: string
  *   message: string
  *   read: boolean

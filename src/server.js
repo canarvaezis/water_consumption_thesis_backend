@@ -37,7 +37,6 @@ import profileCustomizationRoutes from './routes/profile-customization.routes.js
 import householdRoutes from './routes/household.routes.js';
 import storeRoutes from './routes/store.routes.js';
 import userRoutes from './routes/user.routes.js';
-import achievementRoutes from './routes/achievement.routes.js';
 import recommendationRoutes from './routes/recommendation.routes.js';
 import stratumRoutes from './routes/stratum.routes.js';
 import setupRoutes from './routes/setup.routes.js';
@@ -150,7 +149,6 @@ app.use('/api/profile', writeLimiter, profileCustomizationRoutes);
 app.use('/api/household', writeLimiter, householdRoutes);
 app.use('/api/store', writeLimiter, storeRoutes);
 app.use('/api/users', writeLimiter, userRoutes);
-app.use('/api/achievements', writeLimiter, achievementRoutes);
 app.use('/api/recommendations', writeLimiter, recommendationRoutes);
 app.use('/api/stratum', writeLimiter, stratumRoutes);
 app.use('/api/setup', writeLimiter, setupRoutes);

@@ -44,7 +44,7 @@ router.use(authenticateToken);
  *         name: type
  *         schema:
  *           type: string
- *           enum: [achievement, consumption, goal, household, system, mission]
+ *           enum: [consumption, goal, household, system, mission]
  *         description: Filtrar por tipo de notificación
  *     responses:
  *       200:
@@ -110,7 +110,7 @@ router.get(
       .withMessage('El límite debe ser un número entre 1 y 100'),
     query('type')
       .optional()
-      .isIn(['achievement', 'consumption', 'goal', 'household', 'system', 'mission'])
+      .isIn(['consumption', 'goal', 'household', 'system', 'mission'])
       .withMessage('Tipo de notificación no válido'),
   ],
   validateRequest,
