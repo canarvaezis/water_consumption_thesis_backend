@@ -167,5 +167,20 @@ export class ConsumptionController {
       data: statistics,
     });
   });
+
+  /**
+   * Obtener racha de consumo
+   * GET /api/consumption/streak
+   */
+  static getStreak = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    
+    const streakData = await ConsumptionService.getConsumptionStreak(userId);
+    
+    res.json({
+      success: true,
+      data: streakData,
+    });
+  });
 }
 

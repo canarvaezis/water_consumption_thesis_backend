@@ -20,7 +20,7 @@ export class StratumService {
     }
 
     return {
-      stratum: user.stratum || 3,
+      stratum: user.stratum ?? null,
       updatedAt: user.updatedAt?.toDate ? user.updatedAt.toDate() : user.updatedAt,
     };
   }
@@ -41,7 +41,7 @@ export class StratumService {
       throw new Error('Usuario no encontrado');
     }
 
-    const previousStratum = user.stratum || 3;
+    const previousStratum = user.stratum ?? null;
 
     // Si el estrato no cambió, no hacer nada
     if (previousStratum === newStratum) {

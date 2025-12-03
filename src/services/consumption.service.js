@@ -9,8 +9,10 @@ import { UserConsumptionDetailModel } from '../models/user-consumption-detail.mo
 import { ConsumptionItemModel } from '../models/consumption-item.model.js';
 import { FaucetTypeModel } from '../models/faucet-type.model.js';
 import { UserModel } from '../models/user.model.js';
+import { UserMetricsModel } from '../models/user-metrics.model.js';
 import { UserHouseholdModel } from '../models/user-household.model.js';
-import { calculateWaterCost } from '../utils/water-calculations.utils.js';
+import { calculateWaterCost, updateConsumptionStreak, getCurrentStreak } from '../utils/water-calculations.utils.js';
+import { dateToTimestamp } from '../utils/firestore.utils.js';
 
 export class ConsumptionService {
   /**
@@ -110,6 +112,25 @@ export class ConsumptionService {
     // Recalcular totales de la sesión
     await this.recalculateSessionTotals(session.id);
     
+    // Actualizar racha de consumo del usuario
+    const metrics = await UserMetricsModel.findByUserId(userId);
+    if (metrics) {
+      const streakUpdate = updateConsumptionStreak(metrics, detailData.sessionDate || new Date());
+      await UserMetricsModel.update(userId, {
+        consumptionStreak: streakUpdate.consumptionStreak,
+        lastConsumptionDate: dateToTimestamp(streakUpdate.lastConsumptionDate),
+        streakLastUpdated: dateToTimestamp(streakUpdate.streakLastUpdated),
+      });
+    } else {
+      // Si no existen métricas, crearlas
+      const streakUpdate = updateConsumptionStreak({}, detailData.sessionDate || new Date());
+      await UserMetricsModel.create(userId, {
+        consumptionStreak: streakUpdate.consumptionStreak,
+        lastConsumptionDate: dateToTimestamp(streakUpdate.lastConsumptionDate),
+        streakLastUpdated: dateToTimestamp(streakUpdate.streakLastUpdated),
+      });
+    }
+    
     return { 
       session, 
       detail: {
@@ -145,9 +166,11 @@ export class ConsumptionService {
       throw new Error('Usuario no encontrado');
     }
     
-    // Calcular costo (usar estrato del usuario si existe, sino usar 3 por defecto)
-    const stratum = user.stratum || 3; // Estrato por defecto si no está definido
-    const totalCost = calculateWaterCost(totalLiters, stratum);
+    // Validar que el estrato esté definido
+    if (user.stratum === null || user.stratum === undefined) {
+      throw new Error('El estrato del usuario no está configurado. Por favor, configure su estrato antes de registrar consumos.');
+    }
+    const totalCost = calculateWaterCost(totalLiters, user.stratum);
     
     // Actualizar sesión
     await ConsumptionSessionModel.update(sessionId, {
@@ -378,6 +401,37 @@ export class ConsumptionService {
   }
 
   /**
+   * Obtener racha de consumo del usuario
+   * Verifica si la racha debe resetearse a 0 si no hay consumo reciente
+   */
+  static async getConsumptionStreak(userId) {
+    const user = await UserModel.findById(userId);
+    
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    
+    // Obtener métricas del usuario
+    const metrics = await UserMetricsModel.findByUserId(userId);
+    
+    // Verificar y obtener la racha actual (puede resetearse a 0 si no hay consumo reciente)
+    const streakData = getCurrentStreak(metrics || {});
+    
+    // Si la racha se reseteó a 0, actualizar en la base de datos
+    if (streakData.streak === 0 && metrics && metrics.consumptionStreak && metrics.consumptionStreak > 0) {
+      await UserMetricsModel.update(userId, {
+        consumptionStreak: 0,
+        streakLastUpdated: dateToTimestamp(new Date()),
+      });
+    }
+    
+    return {
+      streak: streakData.streak,
+      lastConsumptionDate: streakData.lastConsumptionDate,
+    };
+  }
+
+  /**
    * Obtener estadísticas de consumo
    */
   static async getConsumptionStatistics(userId, startDate, endDate) {
@@ -401,11 +455,18 @@ export class ConsumptionService {
     
     // Obtener usuario para calcular costo
     const user = await UserModel.findById(userId);
-    const stratum = user?.stratum || 3;
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    
+    // Validar que el estrato esté definido
+    if (user.stratum === null || user.stratum === undefined) {
+      throw new Error('El estrato del usuario no está configurado. Por favor, configure su estrato antes de ver estadísticas.');
+    }
     
     // Calcular totales
     const totalLiters = sessions.reduce((sum, s) => sum + (s.totalEstimatedLiters || 0), 0);
-    const totalCost = calculateWaterCost(totalLiters, stratum);
+    const totalCost = calculateWaterCost(totalLiters, user.stratum);
     const averageLitersPerDay = totalLiters / sessions.length;
     
     // Obtener todos los detalles para análisis por item

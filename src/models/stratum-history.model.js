@@ -7,7 +7,7 @@
  * {
  *   stratumHistoryId: string (auto-generado)
  *   userId: string
- *   previousStratum: number (1-6)
+ *   previousStratum: number (1-6) | null (null si es la primera asignación)
  *   newStratum: number (1-6)
  *   changedAt: Timestamp
  * }

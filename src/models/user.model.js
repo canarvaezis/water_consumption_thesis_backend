@@ -10,12 +10,15 @@
  *   email: string (único, sincronizado con Firebase Auth)
  *   nickname: string (opcional, null por defecto)
  *   avatarUrl: string (opcional, null por defecto)
- *   stratum: number (1-6, por defecto 3)
+ *   stratum: number (1-6, null por defecto hasta que se asigne)
  *   dailyGoal: number (opcional, meta diaria en litros, null por defecto)
  *   monthlyGoal: number (opcional, meta mensual en litros, null por defecto)
  *   createdAt: Timestamp
  *   updatedAt: Timestamp
  * }
+ * 
+ * Nota: Los campos de progreso (consumptionStreak, lastConsumptionDate, streakLastUpdated)
+ * están en la subcolección users/{uid}/metrics/{metricsId}
  */
 
 import { db } from '../config/firebase.js';
@@ -31,7 +34,9 @@ export class UserModel {
     const userRef = db.collection(COLLECTION_NAME).doc(uid);
     const user = {
       ...userData,
-      stratum: userData.stratum || 3, // Estrato por defecto
+      stratum: userData.stratum !== undefined ? userData.stratum : null, // Estrato null hasta que se asigne
+      dailyGoal: userData.dailyGoal !== undefined ? userData.dailyGoal : null, // Meta diaria null por defecto
+      monthlyGoal: userData.monthlyGoal !== undefined ? userData.monthlyGoal : null, // Meta mensual null por defecto
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };

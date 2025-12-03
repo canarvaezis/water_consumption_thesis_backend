@@ -43,6 +43,7 @@ import stratumRoutes from './routes/stratum.routes.js';
 import setupRoutes from './routes/setup.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import advancedStatisticsRoutes from './routes/advanced-statistics.routes.js';
+import userStatisticsRoutes from './routes/user-statistics.routes.js';
 
 const app = express();
 const PORT = env.port;
@@ -157,6 +158,7 @@ app.use('/api/notifications', writeLimiter, notificationRoutes);
 
 // Rutas de estadísticas con rate limiting para operaciones pesadas
 app.use('/api/statistics', heavyOperationLimiter, advancedStatisticsRoutes);
+app.use('/api/user-statistics', generalLimiter, userStatisticsRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

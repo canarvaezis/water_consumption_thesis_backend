@@ -111,3 +111,102 @@ export const calculateTotalConsumption = (sessions) => {
   }, 0);
 };
 
+/**
+ * Verificar y obtener la racha actual del usuario
+ * Si el último consumo fue antes de ayer, la racha debe ser 0
+ * 
+ * @param {Object} user - Objeto de usuario con lastConsumptionDate y consumptionStreak
+ * @returns {Object} - Objeto con la racha actualizada (puede ser 0 si no hay consumo reciente)
+ */
+export const getCurrentStreak = (user) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  // Convertir lastConsumptionDate si es Timestamp de Firestore
+  let lastDate = null;
+  if (user.lastConsumptionDate) {
+    if (user.lastConsumptionDate.toDate && typeof user.lastConsumptionDate.toDate === 'function') {
+      lastDate = user.lastConsumptionDate.toDate();
+    } else if (user.lastConsumptionDate instanceof Date) {
+      lastDate = new Date(user.lastConsumptionDate);
+    } else {
+      lastDate = new Date(user.lastConsumptionDate);
+    }
+    lastDate.setHours(0, 0, 0, 0);
+  }
+  
+  let currentStreak = user.consumptionStreak || 0;
+  
+  // Si no hay última fecha de consumo, racha es 0
+  if (!lastDate) {
+    currentStreak = 0;
+  }
+  // Si la última fecha es hoy o ayer, mantener la racha actual
+  else if (lastDate.getTime() === today.getTime() || lastDate.getTime() === yesterday.getTime()) {
+    // Mantener la racha actual
+    currentStreak = user.consumptionStreak || 0;
+  }
+  // Si la última fecha es anterior a ayer, la racha debe ser 0
+  else {
+    currentStreak = 0;
+  }
+  
+  return {
+    streak: currentStreak,
+    lastConsumptionDate: lastDate,
+  };
+};
+
+/**
+ * Actualizar racha de consumo del usuario al registrar un nuevo consumo
+ * 
+ * @param {Object} user - Objeto de usuario con lastConsumptionDate y consumptionStreak
+ * @param {Date} consumptionDate - Fecha del consumo registrado (debe ser hoy)
+ * @returns {Object} - Objeto con los valores actualizados de la racha
+ */
+export const updateConsumptionStreak = (user, consumptionDate) => {
+  const today = new Date(consumptionDate);
+  today.setHours(0, 0, 0, 0);
+  
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  // Convertir lastConsumptionDate si es Timestamp de Firestore
+  let lastDate = null;
+  if (user.lastConsumptionDate) {
+    if (user.lastConsumptionDate.toDate && typeof user.lastConsumptionDate.toDate === 'function') {
+      lastDate = user.lastConsumptionDate.toDate();
+    } else if (user.lastConsumptionDate instanceof Date) {
+      lastDate = new Date(user.lastConsumptionDate);
+    } else {
+      lastDate = new Date(user.lastConsumptionDate);
+    }
+    lastDate.setHours(0, 0, 0, 0);
+  }
+  
+  let newStreak = 0;
+  
+  // Si la última fecha es ayer, incrementar racha
+  if (lastDate && lastDate.getTime() === yesterday.getTime()) {
+    newStreak = (user.consumptionStreak || 0) + 1;
+  }
+  // Si la última fecha es hoy, mantener racha (ya se registró hoy)
+  else if (lastDate && lastDate.getTime() === today.getTime()) {
+    // Mantener la racha actual
+    newStreak = user.consumptionStreak || 0;
+  }
+  // Si la última fecha es anterior a ayer o no existe, empezar en 1 (nuevo registro)
+  else {
+    newStreak = 1;
+  }
+  
+  return {
+    consumptionStreak: newStreak,
+    lastConsumptionDate: today,
+    streakLastUpdated: new Date(),
+  };
+};
+

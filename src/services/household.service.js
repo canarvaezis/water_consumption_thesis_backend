@@ -82,7 +82,7 @@ export class HouseholdService {
     const members = await UserHouseholdModel.getUsersByHouseholdId(household.id);
     const membersWithDetails = await Promise.all(
       members.map(async (member) => {
-        const user = await UserModel.findByUid(member.userId);
+        const user = await UserModel.findById(member.userId);
         return {
           userId: member.userId,
           userHouseholdId: member.id,

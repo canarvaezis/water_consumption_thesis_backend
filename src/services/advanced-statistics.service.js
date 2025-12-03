@@ -63,7 +63,13 @@ export class AdvancedStatisticsService {
     // Obtener sesiones agrupadas por día
     const sessions = await ConsumptionSessionModel.findByDateRange(userId, start, end);
     const user = await UserModel.findById(userId);
-    const stratum = user?.stratum || 3;
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    if (user.stratum === null || user.stratum === undefined) {
+      throw new Error('El estrato del usuario no está configurado. Por favor, configure su estrato antes de ver estadísticas.');
+    }
+    const stratum = user.stratum;
 
     // Agrupar por día
     const dailyData = {};
@@ -160,7 +166,13 @@ export class AdvancedStatisticsService {
     // Obtener datos históricos
     const sessions = await ConsumptionSessionModel.findByDateRange(userId, baseStart, baseEnd);
     const user = await UserModel.findById(userId);
-    const stratum = user?.stratum || 3;
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    if (user.stratum === null || user.stratum === undefined) {
+      throw new Error('El estrato del usuario no está configurado. Por favor, configure su estrato antes de ver predicciones.');
+    }
+    const stratum = user.stratum;
 
     if (sessions.length === 0) {
       return {
@@ -234,7 +246,13 @@ export class AdvancedStatisticsService {
     // Obtener sesiones
     const sessions = await ConsumptionSessionModel.findByDateRange(userId, start, end);
     const user = await UserModel.findById(userId);
-    const stratum = user?.stratum || 3;
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    if (user.stratum === null || user.stratum === undefined) {
+      throw new Error('El estrato del usuario no está configurado. Por favor, configure su estrato antes de exportar datos.');
+    }
+    const stratum = user.stratum;
 
     // Obtener detalles de todas las sesiones
     const exportData = [];
@@ -338,7 +356,13 @@ export class AdvancedStatisticsService {
   static async getPeriodStatistics(userId, start, end) {
     const sessions = await ConsumptionSessionModel.findByDateRange(userId, start, end);
     const user = await UserModel.findById(userId);
-    const stratum = user?.stratum || 3;
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    if (user.stratum === null || user.stratum === undefined) {
+      throw new Error('El estrato del usuario no está configurado. Por favor, configure su estrato antes de ver estadísticas.');
+    }
+    const stratum = user.stratum;
 
     const totalLiters = sessions.reduce((sum, s) => sum + (s.totalEstimatedLiters || 0), 0);
     const totalCost = calculateWaterCost(totalLiters, stratum);

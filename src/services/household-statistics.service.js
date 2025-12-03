@@ -54,8 +54,11 @@ export class HouseholdStatisticsService {
         const details = await UserConsumptionDetailModel.findBySessionId(session.id);
         
         // Calcular costo basado en el estrato del usuario
-        const user = await UserModel.findByUid(member.userId);
-        const cost = calculateWaterCost(session.totalEstimatedLiters, user?.stratum || 3);
+        const user = await UserModel.findById(member.userId);
+        // Si el usuario no tiene estrato configurado, el costo será 0
+        const cost = (user?.stratum !== null && user?.stratum !== undefined)
+          ? calculateWaterCost(session.totalEstimatedLiters, user.stratum)
+          : 0;
 
         return {
           userId: member.userId,
@@ -137,11 +140,11 @@ export class HouseholdStatisticsService {
         for (const session of sessions) {
           totalLiters += session.totalEstimatedLiters || 0;
           
-          const user = await UserModel.findByUid(session.userId);
-          const cost = calculateWaterCost(
-            session.totalEstimatedLiters || 0,
-            user?.stratum || 3
-          );
+          const user = await UserModel.findById(session.userId);
+          // Si el usuario no tiene estrato configurado, el costo será 0
+          const cost = (user?.stratum !== null && user?.stratum !== undefined)
+            ? calculateWaterCost(session.totalEstimatedLiters || 0, user.stratum)
+            : 0;
           totalCost += cost;
         }
 
@@ -217,11 +220,11 @@ export class HouseholdStatisticsService {
     for (const session of sessions) {
       totalLiters += session.totalEstimatedLiters || 0;
       
-      const user = await UserModel.findByUid(session.userId);
-      const cost = calculateWaterCost(
-        session.totalEstimatedLiters || 0,
-        user?.stratum || 3
-      );
+      const user = await UserModel.findById(session.userId);
+      // Si el usuario no tiene estrato configurado, el costo será 0
+      const cost = (user?.stratum !== null && user?.stratum !== undefined)
+        ? calculateWaterCost(session.totalEstimatedLiters || 0, user.stratum)
+        : 0;
       totalCost += cost;
 
       // Acumular por usuario
@@ -252,7 +255,7 @@ export class HouseholdStatisticsService {
         .sort((a, b) => b[1].liters - a[1].liters)
         .slice(0, 5)
         .map(async ([userId, data]) => {
-          const user = await UserModel.findByUid(userId);
+          const user = await UserModel.findById(userId);
           return {
             userId,
             userName: user?.name || 'Usuario desconocido',
@@ -308,8 +311,11 @@ export class HouseholdStatisticsService {
           sessionCount++;
         }
 
-        const user = await UserModel.findByUid(member.userId);
-        const cost = calculateWaterCost(totalLiters, user?.stratum || 3);
+        const user = await UserModel.findById(member.userId);
+        // Si el usuario no tiene estrato configurado, el costo será 0
+        const cost = (user?.stratum !== null && user?.stratum !== undefined)
+          ? calculateWaterCost(totalLiters, user.stratum)
+          : 0;
 
         return {
           userId: member.userId,

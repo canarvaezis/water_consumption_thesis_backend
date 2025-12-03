@@ -292,6 +292,37 @@ router.get('/sessions/:date', ConsumptionController.getSessionByDate);
  */
 router.get('/statistics', ConsumptionController.getStatistics);
 
+/**
+ * @swagger
+ * /api/consumption/streak:
+ *   get:
+ *     summary: Obtener racha de consumo del usuario
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Racha de consumo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     streak:
+ *                       type: number
+ *                       description: Número de días consecutivos con registro
+ *                     lastConsumptionDate:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Última fecha en la que se registró consumo
+ */
+router.get('/streak', ConsumptionController.getStreak);
+
 // Items de consumo
 /**
  * @swagger

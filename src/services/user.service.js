@@ -186,7 +186,7 @@ export class UserService {
     return {
       settings: user.settings || defaultSettings,
       // Datos del usuario que pueden considerarse configuración
-      stratum: user.stratum || 3,
+      stratum: user.stratum ?? null,
       dailyGoal: user.dailyGoal || null,
       monthlyGoal: user.monthlyGoal || null,
     };

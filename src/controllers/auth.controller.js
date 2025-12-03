@@ -1,7 +1,10 @@
 import { auth } from '../config/firebase.js';
 import { UserModel } from '../models/user.model.js';
 import { WalletModel } from '../models/wallet.model.js';
+import { UserMetricsModel } from '../models/user-metrics.model.js';
 import { asyncHandler } from '../middleware/error.middleware.js';
+import { getCurrentStreak } from '../utils/water-calculations.utils.js';
+import { dateToTimestamp } from '../utils/firestore.utils.js';
 
 /**
  * Registrar nuevo usuario usando Firebase Authentication
@@ -38,19 +41,51 @@ export const register = asyncHandler(async (req, res) => {
       
       const user = await UserModel.create(uid, userData);
       const wallet = await WalletModel.create(uid, 0);
+      const metrics = await UserMetricsModel.create(uid);
+      
+      // Convertir Timestamps a fechas legibles
+      const userDataResponse = {
+        userId: uid,
+        ...user,
+        createdAt: user.createdAt?.toDate 
+          ? user.createdAt.toDate() 
+          : user.createdAt,
+        updatedAt: user.updatedAt?.toDate 
+          ? user.updatedAt.toDate() 
+          : user.updatedAt,
+      };
+      
+      const walletDataResponse = {
+        walletId: wallet.id,
+        balance: wallet.balance || 0,
+        createdAt: wallet.createdAt?.toDate 
+          ? wallet.createdAt.toDate() 
+          : wallet.createdAt,
+        updatedAt: wallet.updatedAt?.toDate 
+          ? wallet.updatedAt.toDate() 
+          : wallet.updatedAt,
+      };
+      
+      const metricsDataResponse = {
+        metricsId: metrics.id,
+        consumptionStreak: metrics.consumptionStreak || 0,
+        lastConsumptionDate: metrics.lastConsumptionDate || null,
+        streakLastUpdated: metrics.streakLastUpdated || null,
+        createdAt: metrics.createdAt?.toDate 
+          ? metrics.createdAt.toDate() 
+          : metrics.createdAt,
+        updatedAt: metrics.updatedAt?.toDate 
+          ? metrics.updatedAt.toDate() 
+          : metrics.updatedAt,
+      };
       
       return res.status(201).json({
         success: true,
         message: 'Usuario registrado exitosamente',
         data: {
-          user: {
-            userId: uid,
-            ...user,
-          },
-          wallet: {
-            walletId: wallet.id,
-            ...wallet,
-          },
+          user: userDataResponse,
+          wallet: walletDataResponse,
+          metrics: metricsDataResponse,
         },
       });
     } catch (authError) {
@@ -82,19 +117,53 @@ export const register = asyncHandler(async (req, res) => {
 
     // Crear billetera como subcolección
     const wallet = await WalletModel.create(uid, 0);
+    
+    // Crear métricas como subcolección
+    const metrics = await UserMetricsModel.create(uid);
+
+    // Convertir Timestamps a fechas legibles
+    const userDataResponse = {
+      userId: uid,
+      ...user,
+      createdAt: user.createdAt?.toDate 
+        ? user.createdAt.toDate() 
+        : user.createdAt,
+      updatedAt: user.updatedAt?.toDate 
+        ? user.updatedAt.toDate() 
+        : user.updatedAt,
+    };
+    
+    const walletDataResponse = {
+      walletId: wallet.id,
+      balance: wallet.balance || 0,
+      createdAt: wallet.createdAt?.toDate 
+        ? wallet.createdAt.toDate() 
+        : wallet.createdAt,
+      updatedAt: wallet.updatedAt?.toDate 
+        ? wallet.updatedAt.toDate() 
+        : wallet.updatedAt,
+    };
+    
+    const metricsDataResponse = {
+      metricsId: metrics.id,
+      consumptionStreak: metrics.consumptionStreak || 0,
+      lastConsumptionDate: metrics.lastConsumptionDate || null,
+      streakLastUpdated: metrics.streakLastUpdated || null,
+      createdAt: metrics.createdAt?.toDate 
+        ? metrics.createdAt.toDate() 
+        : metrics.createdAt,
+      updatedAt: metrics.updatedAt?.toDate 
+        ? metrics.updatedAt.toDate() 
+        : metrics.updatedAt,
+    };
 
     res.status(201).json({
       success: true,
       message: 'Usuario registrado exitosamente',
       data: {
-        user: {
-          userId: uid, // UID de Firebase Auth (ID del documento)
-          ...user,
-        },
-        wallet: {
-          walletId: wallet.id, // ID del documento en la subcolección
-          ...wallet,
-        },
+        user: userDataResponse,
+        wallet: walletDataResponse,
+        metrics: metricsDataResponse,
       },
     });
   } catch (error) {
@@ -154,7 +223,13 @@ export const login = asyncHandler(async (req, res) => {
 
     // Obtener wallet del usuario
     const wallet = await WalletModel.findByUserId(uid);
+    
+    // Obtener métricas del usuario
+    const metrics = await UserMetricsModel.findByUserId(uid);
 
+    // Verificar y obtener la racha actual (puede resetearse a 0 si no hay consumo reciente)
+    const streakData = getCurrentStreak(metrics || {});
+    
     // Convertir Timestamps a fechas legibles
     const userData = {
       uid,
@@ -165,6 +240,33 @@ export const login = asyncHandler(async (req, res) => {
       updatedAt: user.updatedAt?.toDate 
         ? user.updatedAt.toDate() 
         : user.updatedAt,
+    };
+    
+    // Preparar datos de métricas
+    const metricsData = metrics ? {
+      consumptionStreak: streakData.streak,
+      lastConsumptionDate: streakData.lastConsumptionDate
+        ? (streakData.lastConsumptionDate.toDate 
+            ? streakData.lastConsumptionDate.toDate() 
+            : new Date(streakData.lastConsumptionDate))
+        : null,
+      streakLastUpdated: metrics.streakLastUpdated
+        ? (metrics.streakLastUpdated.toDate 
+            ? metrics.streakLastUpdated.toDate() 
+            : new Date(metrics.streakLastUpdated))
+        : null,
+      createdAt: metrics.createdAt?.toDate 
+        ? metrics.createdAt.toDate() 
+        : metrics.createdAt,
+      updatedAt: metrics.updatedAt?.toDate 
+        ? metrics.updatedAt.toDate() 
+        : metrics.updatedAt,
+    } : {
+      consumptionStreak: 0,
+      lastConsumptionDate: null,
+      streakLastUpdated: null,
+      createdAt: null,
+      updatedAt: null,
     };
 
     // Preparar datos del wallet
@@ -190,6 +292,7 @@ export const login = asyncHandler(async (req, res) => {
       data: {
         user: userData,
         wallet: walletData,
+        metrics: metricsData,
       },
     });
   } catch (error) {
@@ -215,7 +318,24 @@ export const getProfile = asyncHandler(async (req, res) => {
 
   // Obtener wallet del usuario
   const wallet = await WalletModel.findByUserId(req.user.uid);
+  
+  // Obtener métricas del usuario
+  const metrics = await UserMetricsModel.findByUserId(req.user.uid);
 
+  // Verificar y obtener la racha actual (puede resetearse a 0 si no hay consumo reciente)
+  const streakData = getCurrentStreak(metrics || {});
+  
+  // Si la racha se reseteó a 0, actualizar en la base de datos
+  if (streakData.streak === 0 && metrics && metrics.consumptionStreak && metrics.consumptionStreak > 0) {
+    await UserMetricsModel.update(req.user.uid, {
+      consumptionStreak: 0,
+      streakLastUpdated: dateToTimestamp(new Date()),
+    });
+    if (metrics) {
+      metrics.consumptionStreak = 0;
+    }
+  }
+  
   // Convertir Timestamps a fechas legibles
   const userData = {
     uid: req.user.uid,
@@ -226,6 +346,33 @@ export const getProfile = asyncHandler(async (req, res) => {
     updatedAt: user.updatedAt?.toDate 
       ? user.updatedAt.toDate() 
       : user.updatedAt,
+  };
+  
+  // Preparar datos de métricas
+  const metricsData = metrics ? {
+    consumptionStreak: streakData.streak,
+    lastConsumptionDate: streakData.lastConsumptionDate
+      ? (streakData.lastConsumptionDate.toDate 
+          ? streakData.lastConsumptionDate.toDate() 
+          : new Date(streakData.lastConsumptionDate))
+      : null,
+    streakLastUpdated: metrics.streakLastUpdated
+      ? (metrics.streakLastUpdated.toDate 
+          ? metrics.streakLastUpdated.toDate() 
+          : new Date(metrics.streakLastUpdated))
+      : null,
+    createdAt: metrics.createdAt?.toDate 
+      ? metrics.createdAt.toDate() 
+      : metrics.createdAt,
+    updatedAt: metrics.updatedAt?.toDate 
+      ? metrics.updatedAt.toDate() 
+      : metrics.updatedAt,
+  } : {
+    consumptionStreak: 0,
+    lastConsumptionDate: null,
+    streakLastUpdated: null,
+    createdAt: null,
+    updatedAt: null,
   };
 
   // Preparar datos del wallet
@@ -250,6 +397,7 @@ export const getProfile = asyncHandler(async (req, res) => {
     data: {
       user: userData,
       wallet: walletData,
+      metrics: metricsData,
     },
   });
 });
