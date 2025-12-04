@@ -4,13 +4,16 @@
  * Estructura del documento:
  * {
  *   storeItemId: string (auto-generado)
- *   category: string ("avatar" | "nickname")
+ *   category: string ("skin_color" | "face_shape" | "eyes" | "nose" | "mouth" | "ears" | "hair" | "alias")
  *   name: string
  *   description: string
- *   price: number (puntos)
- *   asset_url: string (URL del asset en Firebase Storage)
+ *   price: number (puntos, 0 si es gratis)
+ *   assetUrl: string (URL del asset en Firebase Storage)
  *   default: boolean (si es item por defecto/gratis)
+ *   active: boolean (si el item está disponible, true por defecto)
+ *   featured: boolean (si es item destacado, false por defecto)
  *   createdAt: Timestamp
+ *   updatedAt: Timestamp
  * }
  */
 
@@ -27,12 +30,17 @@ export class StoreItemModel {
     const itemRef = db.collection(COLLECTION_NAME).doc();
     const item = {
       storeItemId: itemRef.id,
-      storeCategoryId: itemData.storeCategoryId,
+      storeCategoryId: itemData.storeCategoryId || null,
+      category: itemData.category, // Requerido: "skin_color" | "face_shape" | "eyes" | "nose" | "mouth" | "ears" | "hair" | "alias"
       name: itemData.name,
-      description: itemData.description,
-      price: itemData.price,
-      assetUrl: itemData.assetUrl,
+      description: itemData.description || null,
+      price: itemData.price || 0,
+      assetUrl: itemData.assetUrl || null,
+      default: itemData.default || false,
+      active: itemData.active !== undefined ? itemData.active : true,
+      featured: itemData.featured || false,
       createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     };
     
     await itemRef.set(item);
@@ -53,15 +61,40 @@ export class StoreItemModel {
   }
 
   /**
-   * Obtener items por categoría (category: "avatar" | "nickname")
+   * Obtener items por categoría
+   * Categorías válidas: "skin_color" | "face_shape" | "eyes" | "nose" | "mouth" | "ears" | "hair" | "alias"
    */
-  static async findByCategory(category) {
-    const snapshot = await db
-      .collection(COLLECTION_NAME)
-      .where('category', '==', category)
-      .get();
+  static async findByCategory(category, options = {}) {
+    const { activeOnly = true, includeInactive = false } = options;
     
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    let query = db
+      .collection(COLLECTION_NAME)
+      .where('category', '==', category);
+    
+    // Filtrar solo activos si se solicita
+    if (activeOnly && !includeInactive) {
+      query = query.where('active', '==', true);
+      // Ordenar por precio y nombre (requiere índice compuesto: category, active, price, name)
+      query = query.orderBy('price', 'asc').orderBy('name', 'asc');
+    } else {
+      // Solo ordenar por precio
+      query = query.orderBy('price', 'asc');
+    }
+    
+    const snapshot = await query.get();
+    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Si no se pudo ordenar por nombre en la query, ordenar en memoria
+    if (!activeOnly || includeInactive) {
+      items.sort((a, b) => {
+        if (a.price !== b.price) {
+          return (a.price || 0) - (b.price || 0);
+        }
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    }
+    
+    return items;
   }
 
   /**
@@ -79,9 +112,52 @@ export class StoreItemModel {
   /**
    * Obtener todos los items
    */
-  static async findAll() {
-    const snapshot = await db.collection(COLLECTION_NAME).get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  static async findAll(options = {}) {
+    const { activeOnly = true, limit = null, category = null } = options;
+    
+    let query = db.collection(COLLECTION_NAME);
+    
+    // Aplicar filtros
+    if (category) {
+      query = query.where('category', '==', category);
+      if (activeOnly) {
+        query = query.where('active', '==', true);
+      }
+      // Ordenar por precio y nombre (requiere índice compuesto)
+      query = query.orderBy('price', 'asc').orderBy('name', 'asc');
+    } else if (activeOnly) {
+      // Solo filtrar por activo, ordenar por categoría y precio
+      query = query.where('active', '==', true);
+      query = query.orderBy('category', 'asc').orderBy('price', 'asc');
+    } else {
+      // Sin filtros, solo ordenar por categoría
+      query = query.orderBy('category', 'asc');
+    }
+    
+    if (limit) {
+      query = query.limit(limit);
+    }
+    
+    const snapshot = await query.get();
+    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Si hay múltiples filtros o necesitamos ordenar por nombre, hacerlo en memoria
+    if (category && activeOnly) {
+      // Ya está ordenado por precio y nombre
+    } else if (!category) {
+      // Ordenar en memoria por precio y nombre dentro de cada categoría
+      items.sort((a, b) => {
+        if (a.category !== b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        if (a.price !== b.price) {
+          return (a.price || 0) - (b.price || 0);
+        }
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    }
+    
+    return items;
   }
 
   /**
@@ -89,10 +165,10 @@ export class StoreItemModel {
    */
   static async update(itemId, updateData) {
     const itemRef = db.collection(COLLECTION_NAME).doc(itemId);
-    await itemRef.set({
+    await itemRef.update({
       ...updateData,
       updatedAt: Timestamp.now(),
-    }, { merge: true });
+    });
     
     return await this.findById(itemId);
   }

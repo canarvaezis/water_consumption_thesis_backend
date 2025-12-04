@@ -10,6 +10,8 @@ import { InventoryModel } from '../models/inventory.model.js';
 import { WalletModel } from '../models/wallet.model.js';
 import { WalletTransactionModel } from '../models/wallet-transaction.model.js';
 import { UserModel } from '../models/user.model.js';
+import { db } from '../config/firebase.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 export class StoreService {
   /**
@@ -32,30 +34,23 @@ export class StoreService {
   }
 
   /**
-   * Obtener todos los items de tienda
+   * Obtener todos los items de tienda con paginación
    * Incluye información de si el usuario los tiene en su inventario
    */
-  static async getItems(userId) {
-    const items = await StoreItemModel.findAll();
-    const wallet = await WalletModel.findByUserId(userId);
-    
-    // Si el usuario no tiene wallet, solo retornar items sin info de inventario
-    if (!wallet) {
-      return items.map(item => ({
-        id: item.id,
-        storeItemId: item.storeItemId || item.id,
-        storeCategoryId: item.storeCategoryId,
-        category: item.category,
-        name: item.name,
-        description: item.description,
-        price: item.price || 0,
-        assetUrl: item.assetUrl || item.asset_url,
-        default: item.default || false,
-        createdAt: item.createdAt,
-        owned: item.default || false,
-      }));
-    }
+  static async getItems(userId, options = {}) {
+    const { 
+      limit = 50, 
+      category = null, 
+      activeOnly = true,
+      startAfter = null 
+    } = options;
 
+    const items = await StoreItemModel.findAll({ 
+      activeOnly, 
+      limit, 
+      category 
+    });
+    
     // Obtener inventario del usuario
     const inventory = await InventoryModel.getInventoryByUserId(userId);
     const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
@@ -70,6 +65,8 @@ export class StoreService {
       price: item.price || 0,
       assetUrl: item.assetUrl || item.asset_url,
       default: item.default || false,
+      featured: item.featured || false,
+      active: item.active !== undefined ? item.active : true,
       createdAt: item.createdAt,
       owned: item.default || false || ownedItemIds.has(item.id),
     }));
@@ -106,23 +103,28 @@ export class StoreService {
 
   /**
    * Obtener items por categoría
+   * @param {string} userId - ID del usuario
+   * @param {string} category - Categoría de personalización (skin_color, face_shape, eyes, etc.)
    */
-  static async getItemsByCategory(userId, categoryId) {
-    // Primero intentar buscar por storeCategoryId
-    let items = await StoreItemModel.findByCategoryId(categoryId);
-    
-    // Si no hay resultados, buscar por category (avatar/nickname)
-    if (items.length === 0) {
-      const category = await StoreCategoryModel.findById(categoryId);
-      if (category && category.name) {
-        // Asumir que el nombre de la categoría puede ser "avatar" o "nickname"
-        const categoryName = category.name.toLowerCase();
-        if (categoryName === 'avatar' || categoryName === 'nickname') {
-          items = await StoreItemModel.findByCategory(categoryName);
+  static async getItemsByCategory(userId, category) {
+    // Validar categoría
+    const validCategories = ['skin_color', 'face_shape', 'eyes', 'nose', 'mouth', 'ears', 'hair', 'alias'];
+    if (!validCategories.includes(category)) {
+      // Intentar buscar por storeCategoryId (compatibilidad)
+      const categoryDoc = await StoreCategoryModel.findById(category);
+      if (categoryDoc && categoryDoc.name) {
+        const categoryName = categoryDoc.name.toLowerCase();
+        if (validCategories.includes(categoryName)) {
+          category = categoryName;
+        } else {
+          throw new Error(`Categoría inválida: ${category}`);
         }
+      } else {
+        throw new Error(`Categoría inválida: ${category}`);
       }
     }
 
+    const items = await StoreItemModel.findByCategory(category, { activeOnly: true });
     const inventory = await InventoryModel.getInventoryByUserId(userId);
     const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
 
@@ -136,37 +138,42 @@ export class StoreService {
       price: item.price || 0,
       assetUrl: item.assetUrl || item.asset_url,
       default: item.default || false,
+      featured: item.featured || false,
+      active: item.active !== undefined ? item.active : true,
       createdAt: item.createdAt,
       owned: item.default || false || ownedItemIds.has(item.id),
     }));
   }
 
   /**
-   * Comprar un item de la tienda
-   * Verifica balance, descuenta puntos y agrega al inventario
+   * Comprar un item de la tienda (TRANSACCIÓN ATÓMICA)
+   * Verifica balance, descuenta puntos y agrega al inventario usando batch
    */
   static async purchaseItem(userId, storeItemId) {
-    // Verificar que el item existe
+    // Verificar que el item existe y está activo
     const item = await StoreItemModel.findById(storeItemId);
     if (!item) {
       throw new Error('Item no encontrado');
     }
 
+    if (!item.active) {
+      throw new Error('Este item no está disponible para compra');
+    }
+
+    // Obtener o crear wallet
+    let wallet = await WalletModel.findByUserId(userId);
+    if (!wallet) {
+      wallet = await WalletModel.create(userId, 0);
+    }
+
+    // Verificar si ya lo tiene
+    const hasItem = await InventoryModel.hasItem(userId, storeItemId);
+    if (hasItem) {
+      throw new Error('Ya tienes este item en tu inventario');
+    }
+
     // Si es un item por defecto (gratis), agregarlo directamente al inventario
     if (item.default || (item.price === 0 || !item.price)) {
-      // Obtener o crear wallet
-      let wallet = await WalletModel.findByUserId(userId);
-      if (!wallet) {
-        wallet = await WalletModel.create(userId, 0);
-      }
-
-      // Verificar si ya lo tiene
-      const hasItem = await InventoryModel.hasItem(userId, storeItemId);
-      if (hasItem) {
-        throw new Error('Ya tienes este item en tu inventario');
-      }
-
-      // Agregar al inventario
       const inventoryItem = await InventoryModel.addItem(userId, wallet.id, storeItemId);
       
       return {
@@ -183,15 +190,9 @@ export class StoreService {
       };
     }
 
-    // Verificar que el item tiene precio
+    // Verificar que el item tiene precio válido
     if (!item.price || item.price <= 0) {
       throw new Error('Este item no está disponible para compra');
-    }
-
-    // Obtener o crear wallet
-    let wallet = await WalletModel.findByUserId(userId);
-    if (!wallet) {
-      wallet = await WalletModel.create(userId, 0);
     }
 
     // Verificar balance suficiente
@@ -199,25 +200,60 @@ export class StoreService {
       throw new Error('Saldo insuficiente');
     }
 
-    // Verificar si ya lo tiene
-    const hasItem = await InventoryModel.hasItem(userId, storeItemId);
-    if (hasItem) {
-      throw new Error('Ya tienes este item en tu inventario');
-    }
+    // TRANSACCIÓN ATÓMICA usando batch
+    const batch = db.batch();
+    const now = Timestamp.now();
 
-    // Descontar puntos
-    const updatedWallet = await WalletModel.subtractPoints(userId, wallet.id, item.price);
+    // 1. Actualizar balance del wallet
+    const walletRef = db
+      .collection('users')
+      .doc(userId)
+      .collection('wallet')
+      .doc(wallet.id);
+    
+    const newBalance = wallet.balance - item.price;
+    batch.update(walletRef, {
+      balance: newBalance,
+      updatedAt: now,
+    });
 
-    // Agregar al inventario
-    const inventoryItem = await InventoryModel.addItem(userId, wallet.id, storeItemId);
+    // 2. Agregar al inventario
+    const inventoryRef = db
+      .collection('users')
+      .doc(userId)
+      .collection('inventory')
+      .doc();
+    
+    batch.set(inventoryRef, {
+      inventoryId: inventoryRef.id,
+      walletId: wallet.id,
+      storeItemId: storeItemId,
+      purchasedAt: now,
+    });
 
-    // Registrar transacción
-    const transaction = await WalletTransactionModel.create(userId, wallet.id, {
+    // 3. Registrar transacción
+    const transactionRef = db
+      .collection('users')
+      .doc(userId)
+      .collection('transactions')
+      .doc();
+    
+    batch.set(transactionRef, {
+      transactionId: transactionRef.id,
+      walletId: wallet.id,
       type: 'purchase',
-      amount: -item.price, // Negativo porque es un gasto
+      amount: -item.price,
       description: `Compra de ${item.name}`,
       storeItemId: storeItemId,
+      createdAt: now,
     });
+
+    // Ejecutar todas las operaciones atómicamente
+    await batch.commit();
+
+    // Obtener los documentos creados
+    const inventoryDoc = await inventoryRef.get();
+    const transactionDoc = await transactionRef.get();
 
     return {
       item: {
@@ -226,15 +262,18 @@ export class StoreService {
         category: item.category,
         price: item.price,
       },
-      inventory: inventoryItem,
+      inventory: {
+        id: inventoryDoc.id,
+        ...inventoryDoc.data(),
+      },
       wallet: {
-        balance: updatedWallet.balance,
+        id: wallet.id,
+        balance: newBalance,
       },
       pointsSpent: item.price,
       transaction: {
-        id: transaction.id,
-        type: transaction.type,
-        amount: transaction.amount,
+        id: transactionDoc.id,
+        ...transactionDoc.data(),
       },
     };
   }
@@ -306,19 +345,26 @@ export class StoreService {
 
   /**
    * Obtener items destacados
-   * Por ahora retorna items con precio > 0 ordenados por precio (más caros primero)
-   * O se puede usar un campo "featured" en el futuro
+   * Retorna items con featured: true o los más caros si no hay featured
    */
-  static async getFeaturedItems(userId) {
-    const items = await StoreItemModel.findAll();
-    const wallet = await WalletModel.findByUserId(userId);
+  static async getFeaturedItems(userId, limit = 10) {
+    const items = await StoreItemModel.findAll({ activeOnly: true });
     
-    // Filtrar items destacados (por ahora: precio > 0, no default)
-    // En el futuro se puede agregar un campo "featured: true" en el modelo
-    const featuredItems = items
-      .filter(item => !item.default && item.price > 0)
-      .sort((a, b) => (b.price || 0) - (a.price || 0))
-      .slice(0, 10); // Top 10 items más caros como destacados
+    // Filtrar items destacados (featured: true)
+    let featuredItems = items.filter(item => item.featured === true);
+    
+    // Si no hay suficientes items destacados, agregar los más caros
+    if (featuredItems.length < limit) {
+      const expensiveItems = items
+        .filter(item => !item.default && item.price > 0 && !item.featured)
+        .sort((a, b) => (b.price || 0) - (a.price || 0))
+        .slice(0, limit - featuredItems.length);
+      
+      featuredItems = [...featuredItems, ...expensiveItems];
+    }
+    
+    // Limitar resultados
+    featuredItems = featuredItems.slice(0, limit);
     
     const inventory = await InventoryModel.getInventoryByUserId(userId);
     const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
@@ -333,6 +379,8 @@ export class StoreService {
       price: item.price || 0,
       assetUrl: item.assetUrl || item.asset_url,
       default: item.default || false,
+      featured: item.featured || false,
+      active: item.active !== undefined ? item.active : true,
       createdAt: item.createdAt,
       owned: item.default || false || ownedItemIds.has(item.id),
     }));

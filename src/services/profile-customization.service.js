@@ -1,246 +1,230 @@
 /**
  * Servicio de Personalización de Perfil
  * 
- * Lógica de negocio para gestionar avatares y nicknames del usuario
+ * Lógica de negocio para gestionar la personalización del avatar del usuario
+ * Nuevo sistema: color de piel, forma de cara, ojos, nariz, boca, orejas, pelo y alias
  */
 
 import { StoreItemModel } from '../models/store-item.model.js';
 import { InventoryModel } from '../models/inventory.model.js';
 import { UserModel } from '../models/user.model.js';
-import { WalletModel } from '../models/wallet.model.js';
+import { UserCustomizationModel } from '../models/user-customization.model.js';
 import { PointsService } from './points.service.js';
+
+// Categorías válidas de personalización
+export const CUSTOMIZATION_CATEGORIES = {
+  SKIN_COLOR: 'skin_color',
+  FACE_SHAPE: 'face_shape',
+  EYES: 'eyes',
+  NOSE: 'nose',
+  MOUTH: 'mouth',
+  EARS: 'ears',
+  HAIR: 'hair',
+  ALIAS: 'alias',
+};
 
 export class ProfileCustomizationService {
   /**
-   * Obtener todos los avatares disponibles
-   * Incluye información de si el usuario los tiene en su inventario
+   * Obtener items disponibles por categoría
+   * @param {string} userId - ID del usuario
+   * @param {string} category - Categoría de personalización
    */
-  static async getAvailableAvatars(userId) {
-    const avatars = await StoreItemModel.findByCategory('avatar');
-    const wallet = await WalletModel.findByUserId(userId);
-    
-    // Si el usuario no tiene wallet, solo retornar avatares sin info de inventario
-    if (!wallet) {
-      return avatars.map(avatar => ({
-        id: avatar.id,
-        name: avatar.name,
-        description: avatar.description,
-        asset_url: avatar.asset_url || avatar.assetUrl,
-        price: avatar.price || 0,
-        default: avatar.default || false,
-        category: avatar.category,
-        owned: avatar.default || false, // Los items por defecto se consideran "owned"
-      }));
+  static async getItemsByCategory(userId, category) {
+    // Validar categoría
+    if (!Object.values(CUSTOMIZATION_CATEGORIES).includes(category)) {
+      throw new Error(`Categoría inválida: ${category}`);
     }
+
+    // Obtener items de la categoría
+    const items = await StoreItemModel.findByCategory(category, { activeOnly: true });
 
     // Obtener inventario del usuario
     const inventory = await InventoryModel.getInventoryByUserId(userId);
     const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
 
-    return avatars.map(avatar => ({
-      id: avatar.id,
-      name: avatar.name,
-      description: avatar.description,
-      asset_url: avatar.asset_url || avatar.assetUrl,
-      price: avatar.price || 0,
-      default: avatar.default || false,
-      category: avatar.category,
-      owned: avatar.default || false || ownedItemIds.has(avatar.id),
+    // Obtener personalización actual
+    const customization = await UserCustomizationModel.findByUserId(userId);
+    const activeItemId = customization ? customization[category] : null;
+
+    return items.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      assetUrl: item.assetUrl || item.asset_url,
+      price: item.price || 0,
+      default: item.default || false,
+      category: item.category,
+      owned: item.default || false || ownedItemIds.has(item.id),
+      active: activeItemId === item.id, // Si está activo actualmente
     }));
   }
 
   /**
-   * Obtener todos los nicknames disponibles
-   * Incluye información de si el usuario los tiene en su inventario
+   * Obtener todas las categorías de personalización con sus items
    */
-  static async getAvailableNicknames(userId) {
-    const nicknames = await StoreItemModel.findByCategory('nickname');
-    const wallet = await WalletModel.findByUserId(userId);
+  static async getAllCustomizationItems(userId) {
+    const categories = {};
     
-    // Si el usuario no tiene wallet, solo retornar nicknames sin info de inventario
-    if (!wallet) {
-      return nicknames.map(nickname => ({
-        id: nickname.id,
-        name: nickname.name,
-        description: nickname.description,
-        price: nickname.price || 0,
-        default: nickname.default || false,
-        category: nickname.category,
-        owned: nickname.default || false,
-      }));
+    for (const [key, category] of Object.entries(CUSTOMIZATION_CATEGORIES)) {
+      categories[category] = await this.getItemsByCategory(userId, category);
     }
 
-    // Obtener inventario del usuario
-    const inventory = await InventoryModel.getInventoryByUserId(userId);
-    const ownedItemIds = new Set(inventory.map(item => item.storeItemId));
-
-    return nicknames.map(nickname => ({
-      id: nickname.id,
-      name: nickname.name,
-      description: nickname.description,
-      price: nickname.price || 0,
-      default: nickname.default || false,
-      category: nickname.category,
-      owned: nickname.default || false || ownedItemIds.has(nickname.id),
-    }));
+    return categories;
   }
 
   /**
-   * Aplicar avatar al perfil del usuario
-   * Verifica que el usuario tenga el item en su inventario o que sea un item por defecto
+   * Aplicar un item de personalización
+   * @param {string} userId - ID del usuario
+   * @param {string} category - Categoría de personalización
+   * @param {string} storeItemId - ID del item a aplicar
    */
-  static async applyAvatar(userId, storeItemId) {
-    // Verificar que el item existe y es un avatar
+  static async applyItem(userId, category, storeItemId) {
+    // Validar categoría
+    if (!Object.values(CUSTOMIZATION_CATEGORIES).includes(category)) {
+      throw new Error(`Categoría inválida: ${category}`);
+    }
+
+    // Verificar que el item existe
     const item = await StoreItemModel.findById(storeItemId);
-    
     if (!item) {
       throw new Error('Item no encontrado');
     }
 
-    if (item.category !== 'avatar') {
-      throw new Error('El item no es un avatar');
+    // Verificar que el item pertenece a la categoría
+    if (item.category !== category) {
+      throw new Error(`El item no pertenece a la categoría ${category}`);
+    }
+
+    // Verificar que el item está activo
+    if (!item.active) {
+      throw new Error('Este item no está disponible');
     }
 
     // Verificar que el usuario tiene el item o es un item por defecto
     if (!item.default) {
       const hasItem = await InventoryModel.hasItem(userId, storeItemId);
       if (!hasItem) {
-        throw new Error('No tienes este avatar en tu inventario');
+        throw new Error('No tienes este item en tu inventario');
       }
     }
 
-    // Obtener usuario actual para verificar si es primera vez
-    const currentUser = await UserModel.findById(userId);
-    
-    // Aplicar avatar al perfil
-    const avatarUrl = item.asset_url || item.assetUrl;
-    const updatedUser = await UserModel.update(userId, {
-      avatarUrl,
-    });
+    // Aplicar el item a la personalización
+    const customization = await UserCustomizationModel.updatePart(userId, category, storeItemId);
 
-    // Verificar si es la primera vez que se configura un avatar (antes era null)
-    if (!currentUser.avatarUrl) {
-      // Otorgar puntos por configurar avatar (solo una vez)
-      await PointsService.awardAvatarSetPoints(userId);
+    // Si es la primera vez que se configura un alias, otorgar puntos
+    if (category === CUSTOMIZATION_CATEGORIES.ALIAS) {
+      const user = await UserModel.findById(userId);
+      if (!user.nickname) {
+        // Es la primera vez que se configura un alias
+        await PointsService.awardNicknameSetPoints(userId);
+        // Actualizar también el nickname en el usuario
+        await UserModel.update(userId, { nickname: item.name });
+      } else {
+        // Solo actualizar el nickname
+        await UserModel.update(userId, { nickname: item.name });
+      }
     }
 
     return {
-      user: updatedUser,
-      avatar: {
+      customization,
+      item: {
         id: item.id,
         name: item.name,
-        asset_url: avatarUrl,
+        category: item.category,
+        assetUrl: item.assetUrl,
       },
     };
   }
 
   /**
-   * Aplicar nickname al perfil del usuario
-   * Verifica que el usuario tenga el item en su inventario o que sea un item por defecto
+   * Obtener personalización actual del usuario
    */
-  static async applyNickname(userId, storeItemId) {
-    // Verificar que el item existe y es un nickname
-    const item = await StoreItemModel.findById(storeItemId);
+  static async getCurrentCustomization(userId) {
+    const customization = await UserCustomizationModel.findByUserId(userId);
     
-    if (!item) {
-      throw new Error('Item no encontrado');
-    }
-
-    if (item.category !== 'nickname') {
-      throw new Error('El item no es un nickname');
-    }
-
-    // Verificar que el usuario tiene el item o es un item por defecto
-    if (!item.default) {
-      const hasItem = await InventoryModel.hasItem(userId, storeItemId);
-      if (!hasItem) {
-        throw new Error('No tienes este nickname en tu inventario');
-      }
-    }
-
-    // Obtener usuario actual para verificar si es primera vez
-    const currentUser = await UserModel.findById(userId);
-    
-    // Aplicar nickname al perfil
-    const nickname = item.name;
-    const updatedUser = await UserModel.update(userId, {
-      nickname,
-    });
-
-    // Verificar si es la primera vez que se configura un nickname (antes era null)
-    if (!currentUser.nickname) {
-      // Otorgar puntos por configurar nickname (solo una vez)
-      await PointsService.awardNicknameSetPoints(userId);
-    }
-
-    return {
-      user: updatedUser,
-      nickname: {
-        id: item.id,
-        name: item.name,
-      },
-    };
-  }
-
-  /**
-   * Obtener inventario del usuario (avatares y nicknames que posee)
-   */
-  static async getUserInventory(userId) {
-    const wallet = await WalletModel.findByUserId(userId);
-    
-    if (!wallet) {
+    if (!customization) {
+      // Retornar personalización vacía
       return {
-        avatars: [],
-        nicknames: [],
+        skinColor: null,
+        faceShape: null,
+        eyes: null,
+        nose: null,
+        mouth: null,
+        ears: null,
+        hair: null,
+        alias: null,
       };
     }
 
-    const inventory = await InventoryModel.getInventoryByUserId(userId);
+    // Enriquecer con detalles de los items activos
+    const activeItems = {};
     
-    // Obtener todos los items por defecto
-    const allAvatars = await StoreItemModel.findByCategory('avatar');
-    const allNicknames = await StoreItemModel.findByCategory('nickname');
-    
-    const defaultAvatars = allAvatars.filter(a => a.default).map(a => a.id);
-    const defaultNicknames = allNicknames.filter(n => n.default).map(n => n.id);
-    
-    // Combinar items del inventario con items por defecto
-    const ownedItemIds = new Set([
-      ...inventory.map(item => item.storeItemId),
-      ...defaultAvatars,
-      ...defaultNicknames,
-    ]);
-
-    // Obtener detalles de los items
-    const ownedItems = await Promise.all(
-      Array.from(ownedItemIds).map(id => StoreItemModel.findById(id))
-    );
-
-    const avatars = ownedItems
-      .filter(item => item && item.category === 'avatar')
-      .map(item => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        asset_url: item.asset_url || item.assetUrl,
-        price: item.price || 0,
-        default: item.default || false,
-      }));
-
-    const nicknames = ownedItems
-      .filter(item => item && item.category === 'nickname')
-      .map(item => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        price: item.price || 0,
-        default: item.default || false,
-      }));
+    for (const [key, category] of Object.entries(CUSTOMIZATION_CATEGORIES)) {
+      const itemId = customization[category];
+      if (itemId) {
+        const item = await StoreItemModel.findById(itemId);
+        if (item) {
+          activeItems[category] = {
+            id: item.id,
+            name: item.name,
+            assetUrl: item.assetUrl || item.asset_url,
+            category: item.category,
+          };
+        }
+      } else {
+        activeItems[category] = null;
+      }
+    }
 
     return {
-      avatars,
-      nicknames,
+      ...customization,
+      activeItems,
     };
   }
-}
 
+  /**
+   * Aplicar múltiples items de personalización a la vez
+   */
+  static async applyMultipleItems(userId, items) {
+    // items es un objeto: { skinColor: "itemId", eyes: "itemId", ... }
+    const customization = await UserCustomizationModel.upsert(userId, items);
+
+    // Actualizar alias en UserModel si se proporciona
+    if (items.alias) {
+      const aliasItem = await StoreItemModel.findById(items.alias);
+      if (aliasItem) {
+        await UserModel.update(userId, { nickname: aliasItem.name });
+      }
+    }
+
+    return customization;
+  }
+
+  /**
+   * Obtener inventario del usuario filtrado por categoría
+   */
+  static async getInventoryByCategory(userId, category) {
+    const inventory = await InventoryModel.getInventoryByUserId(userId);
+    
+    // Obtener detalles de los items
+    const items = await Promise.all(
+      inventory.map(async (invItem) => {
+        const item = await StoreItemModel.findById(invItem.storeItemId);
+        if (!item || item.category !== category) return null;
+        
+        return {
+          inventoryId: invItem.id,
+          storeItemId: item.id,
+          name: item.name,
+          description: item.description,
+          category: item.category,
+          assetUrl: item.assetUrl || item.asset_url,
+          price: item.price || 0,
+          purchasedAt: invItem.purchasedAt,
+        };
+      })
+    );
+
+    return items.filter(item => item !== null);
+  }
+}
