@@ -32,17 +32,11 @@ import { env } from './config/env.js';
 // Importar rutas
 import authRoutes from './routes/auth.routes.js';
 import consumptionRoutes from './routes/consumption.routes.js';
-import goalsRoutes from './routes/goals.routes.js';
-import profileCustomizationRoutes from './routes/profile-customization.routes.js';
 import householdRoutes from './routes/household.routes.js';
 import storeRoutes from './routes/store.routes.js';
 import userRoutes from './routes/user.routes.js';
-import recommendationRoutes from './routes/recommendation.routes.js';
-import stratumRoutes from './routes/stratum.routes.js';
-import setupRoutes from './routes/setup.routes.js';
 import pushNotificationRoutes from './routes/push-notification.routes.js';
-import advancedStatisticsRoutes from './routes/advanced-statistics.routes.js';
-import userStatisticsRoutes from './routes/user-statistics.routes.js';
+import stratumRoutes from './routes/stratum.routes.js'; // Solo para /api/stratum/rates (público)
 
 const app = express();
 const PORT = env.port;
@@ -144,19 +138,13 @@ app.use('/api/auth', authRoutes);
 
 // Rutas de escritura con rate limiting
 app.use('/api/consumption', writeLimiter, consumptionRoutes);
-app.use('/api/goals', writeLimiter, goalsRoutes);
-app.use('/api/profile', writeLimiter, profileCustomizationRoutes);
 app.use('/api/household', writeLimiter, householdRoutes);
 app.use('/api/store', writeLimiter, storeRoutes);
-app.use('/api/users', writeLimiter, userRoutes);
-app.use('/api/recommendations', writeLimiter, recommendationRoutes);
-app.use('/api/stratum', writeLimiter, stratumRoutes);
-app.use('/api/setup', writeLimiter, setupRoutes);
+app.use('/api/user', writeLimiter, userRoutes);
 app.use('/api/push-notifications', writeLimiter, pushNotificationRoutes);
 
-// Rutas de estadísticas con rate limiting para operaciones pesadas
-app.use('/api/statistics', heavyOperationLimiter, advancedStatisticsRoutes);
-app.use('/api/user-statistics', generalLimiter, userStatisticsRoutes);
+// Ruta pública de estrato (tarifas)
+app.use('/api/stratum', stratumRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

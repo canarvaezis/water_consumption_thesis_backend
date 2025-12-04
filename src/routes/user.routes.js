@@ -1,12 +1,26 @@
 /**
- * Rutas de Usuario
+ * Rutas de Usuario (Consolidadas)
+ * 
+ * Incluye:
+ * - Perfil básico
+ * - Metas (goals)
+ * - Personalización de perfil (customization)
+ * - Estrato (stratum)
+ * - Setup items
+ * - Estadísticas del usuario
  */
 
 import express from 'express';
 import { UserController } from '../controllers/user.controller.js';
+import { GoalsController } from '../controllers/goals.controller.js';
+import { ProfileCustomizationController } from '../controllers/profile-customization.controller.js';
+import { StratumController } from '../controllers/stratum.controller.js';
+import { SetupController } from '../controllers/setup.controller.js';
+import { UserStatisticsController } from '../controllers/user-statistics.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
-import { body, query } from 'express-validator';
+import { body, query, param } from 'express-validator';
 import { validateRequest } from '../middleware/validation.middleware.js';
+import { validate } from '../utils/validation.utils.js';
 
 const router = express.Router();
 
@@ -369,6 +383,376 @@ router.put(
   validateRequest,
   UserController.updateUserSettings
 );
+
+// ============================================
+// RUTAS DE METAS (GOALS)
+// ============================================
+
+/**
+ * @swagger
+ * /api/user/goals:
+ *   get:
+ *     summary: Obtener metas del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/goals', GoalsController.getGoals);
+
+/**
+ * @swagger
+ * /api/user/goals:
+ *   put:
+ *     summary: Actualizar metas del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put(
+  '/goals',
+  [
+    body('dailyGoal')
+      .optional()
+      .custom((value) => {
+        if (value === null) return true;
+        if (typeof value !== 'number' || value < 0) {
+          throw new Error('La meta diaria debe ser un número positivo o null');
+        }
+        return true;
+      }),
+    body('monthlyGoal')
+      .optional()
+      .custom((value) => {
+        if (value === null) return true;
+        if (typeof value !== 'number' || value < 0) {
+          throw new Error('La meta mensual debe ser un número positivo o null');
+        }
+        return true;
+      }),
+    validate,
+  ],
+  GoalsController.updateGoals
+);
+
+/**
+ * @swagger
+ * /api/user/goals/progress:
+ *   get:
+ *     summary: Obtener progreso de metas del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/goals/progress', GoalsController.getProgress);
+
+// ============================================
+// RUTAS DE PERSONALIZACIÓN DE PERFIL
+// ============================================
+
+/**
+ * @swagger
+ * /api/user/profile/avatars:
+ *   get:
+ *     summary: Obtener avatares disponibles
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/profile/avatars', ProfileCustomizationController.getAvatars);
+
+/**
+ * @swagger
+ * /api/user/profile/nicknames:
+ *   get:
+ *     summary: Obtener nicknames disponibles
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/profile/nicknames', ProfileCustomizationController.getNicknames);
+
+/**
+ * @swagger
+ * /api/user/profile/avatar:
+ *   put:
+ *     summary: Aplicar avatar al perfil
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put(
+  '/profile/avatar',
+  [
+    body('storeItemId')
+      .notEmpty()
+      .withMessage('storeItemId es requerido')
+      .isString(),
+    validate,
+  ],
+  ProfileCustomizationController.applyAvatar
+);
+
+/**
+ * @swagger
+ * /api/user/profile/nickname:
+ *   put:
+ *     summary: Aplicar nickname al perfil
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put(
+  '/profile/nickname',
+  [
+    body('storeItemId')
+      .notEmpty()
+      .withMessage('storeItemId es requerido')
+      .isString(),
+    validate,
+  ],
+  ProfileCustomizationController.applyNickname
+);
+
+/**
+ * @swagger
+ * /api/user/profile/inventory:
+ *   get:
+ *     summary: Obtener inventario del usuario (avatares y nicknames que posee)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/profile/inventory', ProfileCustomizationController.getInventory);
+
+// ============================================
+// RUTAS DE ESTRATO
+// ============================================
+
+/**
+ * @swagger
+ * /api/user/stratum:
+ *   get:
+ *     summary: Obtener estrato actual del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/stratum', StratumController.getUserStratum);
+
+/**
+ * @swagger
+ * /api/user/stratum:
+ *   put:
+ *     summary: Actualizar estrato del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put(
+  '/stratum',
+  [
+    body('stratum')
+      .notEmpty()
+      .withMessage('stratum es requerido')
+      .isInt({ min: 1, max: 6 })
+      .withMessage('El estrato debe ser un número entre 1 y 6'),
+  ],
+  validateRequest,
+  StratumController.updateStratum
+);
+
+/**
+ * @swagger
+ * /api/user/stratum/history:
+ *   get:
+ *     summary: Obtener historial de cambios de estrato
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  '/stratum/history',
+  [
+    query('limit')
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage('El límite debe ser un número entre 1 y 100'),
+  ],
+  validateRequest,
+  StratumController.getStratumHistory
+);
+
+// ============================================
+// RUTAS DE SETUP
+// ============================================
+
+/**
+ * @swagger
+ * /api/user/setup/items:
+ *   get:
+ *     summary: Obtener items de configuración del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/setup/items', SetupController.getUserSetupItems);
+
+/**
+ * @swagger
+ * /api/user/setup/items:
+ *   post:
+ *     summary: Agregar o actualizar item de configuración
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  '/setup/items',
+  [
+    body('consumptionItemId')
+      .notEmpty()
+      .withMessage('consumptionItemId es requerido')
+      .isString()
+      .withMessage('consumptionItemId debe ser una cadena de texto'),
+    body('hasItem')
+      .notEmpty()
+      .withMessage('hasItem es requerido')
+      .isBoolean()
+      .withMessage('hasItem debe ser un valor booleano'),
+  ],
+  validateRequest,
+  SetupController.upsertSetupItem
+);
+
+/**
+ * @swagger
+ * /api/user/setup/items/{itemId}:
+ *   put:
+ *     summary: Actualizar item de configuración por ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put(
+  '/setup/items/:itemId',
+  [
+    param('itemId')
+      .notEmpty()
+      .withMessage('itemId es requerido')
+      .isString()
+      .withMessage('itemId debe ser una cadena de texto'),
+    body('hasItem')
+      .notEmpty()
+      .withMessage('hasItem es requerido')
+      .isBoolean()
+      .withMessage('hasItem debe ser un valor booleano'),
+  ],
+  validateRequest,
+  SetupController.updateSetupItem
+);
+
+/**
+ * @swagger
+ * /api/user/setup/items/{itemId}:
+ *   delete:
+ *     summary: Eliminar item de configuración
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.delete(
+  '/setup/items/:itemId',
+  [
+    param('itemId')
+      .notEmpty()
+      .withMessage('itemId es requerido')
+      .isString()
+      .withMessage('itemId debe ser una cadena de texto'),
+  ],
+  validateRequest,
+  SetupController.deleteSetupItem
+);
+
+// ============================================
+// RUTAS DE ESTADÍSTICAS DEL USUARIO
+// ============================================
+
+/**
+ * @swagger
+ * /api/user/statistics/today:
+ *   get:
+ *     summary: Obtener estadísticas del día actual
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/statistics/today', UserStatisticsController.getTodayStatistics);
+
+/**
+ * @swagger
+ * /api/user/statistics/month:
+ *   get:
+ *     summary: Obtener estadísticas del mes actual
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/statistics/month', UserStatisticsController.getCurrentMonthStatistics);
+
+/**
+ * @swagger
+ * /api/user/statistics/average/daily:
+ *   get:
+ *     summary: Obtener promedio diario de consumo
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/statistics/average/daily', UserStatisticsController.getAverageDaily);
+
+/**
+ * @swagger
+ * /api/user/statistics/average/monthly:
+ *   get:
+ *     summary: Obtener promedio mensual de consumo
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/statistics/average/monthly', UserStatisticsController.getAverageMonthly);
+
+/**
+ * @swagger
+ * /api/user/statistics/day/:date:
+ *   get:
+ *     summary: Obtener consumo en un día específico
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  '/statistics/day/:date',
+  [
+    param('date')
+      .notEmpty()
+      .withMessage('date es requerido')
+      .matches(/^\d{4}-\d{2}-\d{2}$/)
+      .withMessage('date debe estar en formato YYYY-MM-DD'),
+  ],
+  validateRequest,
+  UserStatisticsController.getDayConsumption
+);
+
+/**
+ * @swagger
+ * /api/user/statistics/all:
+ *   get:
+ *     summary: Obtener todas las estadísticas del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/statistics/all', UserStatisticsController.getAllStatistics);
 
 export default router;
 

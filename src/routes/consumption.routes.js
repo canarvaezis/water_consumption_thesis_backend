@@ -7,9 +7,12 @@ import { ConsumptionController } from '../controllers/consumption.controller.js'
 import { ConsumptionItemController } from '../controllers/consumption-item.controller.js';
 import { ConsumptionCategoryController } from '../controllers/consumption-category.controller.js';
 import { FaucetTypeController } from '../controllers/faucet-type.controller.js';
+import { AdvancedStatisticsController } from '../controllers/advanced-statistics.controller.js';
+import { GlobalStatisticsController } from '../controllers/global-statistics.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
-import { body } from 'express-validator';
+import { body, query } from 'express-validator';
 import { validate } from '../utils/validation.utils.js';
+import { validateRequest } from '../middleware/validation.middleware.js';
 
 const router = express.Router();
 
@@ -453,6 +456,109 @@ router.get('/faucet-types', FaucetTypeController.getFaucetTypes);
  *         description: Tipo de grifo
  */
 router.get('/faucet-types/:faucetTypeId', FaucetTypeController.getFaucetType);
+
+// ============================================
+// RUTAS DE ESTADÍSTICAS AVANZADAS
+// ============================================
+
+/**
+ * @swagger
+ * /api/consumption/statistics/comparison:
+ *   get:
+ *     summary: Comparar consumo entre períodos
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  '/statistics/comparison',
+  [
+    query('period1')
+      .notEmpty()
+      .withMessage('period1 es requerido'),
+    query('period2')
+      .notEmpty()
+      .withMessage('period2 es requerido'),
+    query('type')
+      .optional()
+      .isIn(['daily', 'monthly', 'yearly'])
+      .withMessage('type debe ser daily, monthly o yearly'),
+  ],
+  validateRequest,
+  AdvancedStatisticsController.comparePeriods
+);
+
+/**
+ * @swagger
+ * /api/consumption/statistics/trends:
+ *   get:
+ *     summary: Obtener tendencias de consumo
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  '/statistics/trends',
+  [
+    query('period')
+      .notEmpty()
+      .withMessage('period es requerido')
+      .isIn(['week', 'month', 'year'])
+      .withMessage('period debe ser week, month o year'),
+    query('metric')
+      .optional()
+      .isIn(['liters', 'cost'])
+      .withMessage('metric debe ser liters o cost'),
+  ],
+  validateRequest,
+  AdvancedStatisticsController.getTrends
+);
+
+/**
+ * @swagger
+ * /api/consumption/statistics/global/average:
+ *   get:
+ *     summary: Obtener promedio de consumo global
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  '/statistics/global/average',
+  [
+    query('startDate')
+      .optional()
+      .isISO8601()
+      .withMessage('startDate debe ser una fecha válida'),
+    query('endDate')
+      .optional()
+      .isISO8601()
+      .withMessage('endDate debe ser una fecha válida'),
+  ],
+  validateRequest,
+  GlobalStatisticsController.getGlobalAverage
+);
+
+/**
+ * @swagger
+ * /api/consumption/statistics/global/monthly-per-user:
+ *   get:
+ *     summary: Obtener promedio mensual por usuario
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  '/statistics/global/monthly-per-user',
+  [
+    query('year')
+      .optional()
+      .isInt({ min: 2000, max: 2100 })
+      .withMessage('year debe ser un número entre 2000 y 2100'),
+  ],
+  validateRequest,
+  GlobalStatisticsController.getMonthlyAveragePerUser
+);
 
 export default router;
 
