@@ -9,6 +9,7 @@ import { UserHouseholdModel } from '../models/user-household.model.js';
 import { UserModel } from '../models/user.model.js';
 import { ConsumptionSessionModel } from '../models/consumption-session.model.js';
 import { PointsService } from './points.service.js';
+import { NotificationAlertsService } from './notification-alerts.service.js';
 
 export class HouseholdService {
   /**
@@ -64,6 +65,20 @@ export class HouseholdService {
 
     // Otorgar puntos por unirse a familia
     await PointsService.awardHouseholdJoinPoints(userId, household.id);
+
+    // Obtener nombre del usuario que se unió
+    const newMember = await UserModel.findById(userId);
+    const memberName = newMember?.name || newMember?.nickname || 'Un nuevo miembro';
+
+    // Notificar a todos los miembros de la familia (excepto al que se unió)
+    const existingMembers = await UserHouseholdModel.getUsersByHouseholdId(household.id);
+    const membersToNotify = existingMembers.filter(m => m.userId !== userId);
+    
+    await Promise.allSettled(
+      membersToNotify.map(member => 
+        NotificationAlertsService.sendFamilyMemberJoined(member.userId, memberName)
+      )
+    );
 
     return household;
   }

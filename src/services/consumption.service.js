@@ -15,6 +15,7 @@ import { WalletModel } from '../models/wallet.model.js';
 import { WalletTransactionModel } from '../models/wallet-transaction.model.js';
 import { PointsService } from './points.service.js';
 import { GoalsService } from './goals.service.js';
+import { NotificationAlertsService } from './notification-alerts.service.js';
 import { calculateWaterCost, updateConsumptionStreak, getCurrentStreak } from '../utils/water-calculations.utils.js';
 import { dateToTimestamp } from '../utils/firestore.utils.js';
 
@@ -207,6 +208,9 @@ export class ConsumptionService {
           description: streakBonusDescription,
           referenceId: session.id,
         });
+
+        // Enviar notificación push por hito de racha
+        await NotificationAlertsService.sendStreakMilestone(userId, newStreak, streakBonusPoints);
       }
     }
     
@@ -220,6 +224,8 @@ export class ConsumptionService {
         const today = new Date(now);
         today.setHours(0, 0, 0, 0);
         await PointsService.awardDailyGoalPoints(userId, today);
+        // Enviar notificación push
+        await NotificationAlertsService.sendDailyGoalAchieved(userId);
       }
       
       // Verificar meta mensual (si se cumplió y es el último día del mes)
@@ -227,8 +233,15 @@ export class ConsumptionService {
         const daysRemaining = goalsProgress.monthly.daysRemaining || 0;
         if (daysRemaining === 0) {
           await PointsService.awardMonthlyGoalPoints(userId, now.getFullYear(), now.getMonth() + 1);
+          // Enviar notificación push
+          await NotificationAlertsService.sendMonthlyGoalAchieved(userId);
         }
       }
+
+      // Enviar alertas de metas (si aplica)
+      await NotificationAlertsService.sendDailyGoalWarning(userId);
+      await NotificationAlertsService.sendDailyGoalExceeded(userId);
+      await NotificationAlertsService.sendMonthlyGoalWarning(userId);
     } catch (error) {
       // Si hay error al verificar metas, no afectar el flujo principal
       console.error('Error verificando metas para puntos:', error);

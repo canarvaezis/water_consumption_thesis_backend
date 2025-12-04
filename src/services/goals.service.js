@@ -7,6 +7,7 @@
 import { UserModel } from '../models/user.model.js';
 import { ConsumptionService } from './consumption.service.js';
 import { PointsService } from './points.service.js';
+import { NotificationAlertsService } from './notification-alerts.service.js';
 
 export class GoalsService {
   /**
@@ -145,12 +146,21 @@ export class GoalsService {
       const today = new Date(now);
       today.setHours(0, 0, 0, 0);
       await PointsService.awardDailyGoalPoints(userId, today);
+      // Enviar notificación push
+      await NotificationAlertsService.sendDailyGoalAchieved(userId);
     }
     
     // Verificar si es el último día del mes para otorgar puntos mensuales
     if (monthlyAchieved && daysRemaining === 0) {
       await PointsService.awardMonthlyGoalPoints(userId, now.getFullYear(), now.getMonth() + 1);
+      // Enviar notificación push
+      await NotificationAlertsService.sendMonthlyGoalAchieved(userId);
     }
+
+    // Enviar alertas de metas (si aplica)
+    await NotificationAlertsService.sendDailyGoalWarning(userId);
+    await NotificationAlertsService.sendDailyGoalExceeded(userId);
+    await NotificationAlertsService.sendMonthlyGoalWarning(userId);
     
     return {
       goals,

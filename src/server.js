@@ -40,7 +40,7 @@ import userRoutes from './routes/user.routes.js';
 import recommendationRoutes from './routes/recommendation.routes.js';
 import stratumRoutes from './routes/stratum.routes.js';
 import setupRoutes from './routes/setup.routes.js';
-import notificationRoutes from './routes/notification.routes.js';
+import pushNotificationRoutes from './routes/push-notification.routes.js';
 import advancedStatisticsRoutes from './routes/advanced-statistics.routes.js';
 import userStatisticsRoutes from './routes/user-statistics.routes.js';
 
@@ -152,7 +152,7 @@ app.use('/api/users', writeLimiter, userRoutes);
 app.use('/api/recommendations', writeLimiter, recommendationRoutes);
 app.use('/api/stratum', writeLimiter, stratumRoutes);
 app.use('/api/setup', writeLimiter, setupRoutes);
-app.use('/api/notifications', writeLimiter, notificationRoutes);
+app.use('/api/push-notifications', writeLimiter, pushNotificationRoutes);
 
 // Rutas de estadísticas con rate limiting para operaciones pesadas
 app.use('/api/statistics', heavyOperationLimiter, advancedStatisticsRoutes);
