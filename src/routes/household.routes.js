@@ -54,9 +54,17 @@ router.post(
       .isLength({ min: 2, max: 50 })
       .withMessage('El nombre debe tener entre 2 y 50 caracteres'),
     body('memberLimit')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('El límite de miembros debe ser un número positivo'),
+      .optional({ nullable: true, checkFalsy: true })
+      .custom((value) => {
+        if (value === null || value === undefined || value === '') {
+          return true; // Permitir null, undefined o string vacío
+        }
+        const numValue = Number(value);
+        if (isNaN(numValue) || !Number.isInteger(numValue) || numValue < 1) {
+          throw new Error('El límite de miembros debe ser un número entero positivo');
+        }
+        return true;
+      }),
   ],
   validateRequest,
   HouseholdController.createHousehold
@@ -229,9 +237,17 @@ router.put(
       .isLength({ min: 2, max: 50 })
       .withMessage('El nombre debe tener entre 2 y 50 caracteres'),
     body('memberLimit')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('El límite de miembros debe ser un número positivo'),
+      .optional({ nullable: true, checkFalsy: true })
+      .custom((value) => {
+        if (value === null || value === undefined || value === '') {
+          return true; // Permitir null, undefined o string vacío
+        }
+        const numValue = Number(value);
+        if (isNaN(numValue) || !Number.isInteger(numValue) || numValue < 1) {
+          throw new Error('El límite de miembros debe ser un número entero positivo');
+        }
+        return true;
+      }),
     validateRequest,
   ],
   HouseholdController.updateHousehold

@@ -7,6 +7,7 @@
 import { HouseholdModel } from '../models/household.model.js';
 import { UserHouseholdModel } from '../models/user-household.model.js';
 import { UserModel } from '../models/user.model.js';
+import { UserCustomizationModel } from '../models/user-customization.model.js';
 import { ConsumptionSessionModel } from '../models/consumption-session.model.js';
 import { PointsService } from './points.service.js';
 import { NotificationAlertsService } from './notification-alerts.service.js';
@@ -101,20 +102,59 @@ export class HouseholdService {
     }
 
     // Obtener todos los miembros con sus datos de usuario
-    const members = await UserHouseholdModel.getUsersByHouseholdId(household.id);
+    let members = await UserHouseholdModel.getUsersByHouseholdId(household.id);
+    
+    // Si no hay miembros en la nueva estructura, intentar migrar desde la estructura antigua
+    if (members.length === 0) {
+      const migratedCount = await UserHouseholdModel.migrateHouseholdMembers(household.id);
+      if (migratedCount > 0) {
+        members = await UserHouseholdModel.getUsersByHouseholdId(household.id);
+      }
+    }
+    
     const membersWithDetails = await Promise.all(
       members.map(async (member) => {
-        const user = await UserModel.findById(member.userId);
-        return {
-          userId: member.userId,
-          userHouseholdId: member.id,
-          role: member.role,
-          joinedAt: member.joinedAt,
-          name: user?.name || 'Usuario desconocido',
-          email: user?.email || '',
-          avatarUrl: user?.avatarUrl || null,
-          nickname: user?.nickname || null,
-        };
+        if (!member.userId) {
+          return {
+            userId: null,
+            userHouseholdId: member.id,
+            role: member.role,
+            joinedAt: member.joinedAt,
+            name: 'Usuario desconocido',
+            email: '',
+            avatarUrl: null,
+            nickname: null,
+          };
+        }
+
+        try {
+          const user = await UserModel.findById(member.userId);
+          const customization = await UserCustomizationModel.findByUserId(member.userId);
+          
+          return {
+            userId: member.userId,
+            userHouseholdId: member.id,
+            role: member.role,
+            joinedAt: member.joinedAt,
+            name: user?.name || 'Usuario desconocido',
+            email: user?.email || '',
+            avatarUrl: user?.avatarUrl || null,
+            nickname: customization?.alias || user?.nickname || null,
+          };
+        } catch (error) {
+          // Si hay error al obtener el usuario, retornar datos básicos
+          console.error(`Error obteniendo datos del usuario ${member.userId}:`, error);
+          return {
+            userId: member.userId,
+            userHouseholdId: member.id,
+            role: member.role,
+            joinedAt: member.joinedAt,
+            name: 'Usuario desconocido',
+            email: '',
+            avatarUrl: null,
+            nickname: null,
+          };
+        }
       })
     );
 
