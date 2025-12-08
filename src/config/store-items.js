@@ -11,19 +11,65 @@
  */
 
 export const STORE_ITEMS = {
-  // Categoría: Color de piel
+  // Categoría: Color de piel (todos desbloqueados)
+  // Nota: Los colores de piel no usan assetUrl porque son valores de color (hex/RGB),
+  // no imágenes. El frontend aplicará el color basándose en el id o colorValue.
   skin_color: [
-    // Ejemplo de estructura (eliminar cuando agregues los reales):
-    // {
-    //   id: 'skin_light',
-    //   name: 'Piel Clara',
-    //   description: 'Tono de piel claro',
-    //   price: 0,
-    //   assetUrl: 'https://firebasestorage.googleapis.com/.../skin_light.png',
-    //   default: true,
-    //   featured: false,
-    //   active: true,
-    // },
+    {
+      id: 'skin_light',
+      name: 'Piel Clara',
+      description: 'Tono de piel claro',
+      price: 0,
+      assetUrl: null, // Los colores de piel no necesitan imagen
+      colorValue: '#FFDBAC', // Valor de color en hex (opcional, para referencia del frontend)
+      default: true,
+      featured: false,
+      active: true,
+    },
+    {
+      id: 'skin_medium_light',
+      name: 'Piel Claro-Medio',
+      description: 'Tono de piel claro-medio',
+      price: 0,
+      assetUrl: null,
+      colorValue: '#F1C27D',
+      default: true,
+      featured: false,
+      active: true,
+    },
+    {
+      id: 'skin_medium',
+      name: 'Piel Media',
+      description: 'Tono de piel medio',
+      price: 0,
+      assetUrl: null,
+      colorValue: '#E0AC69',
+      default: true,
+      featured: false,
+      active: true,
+    },
+    {
+      id: 'skin_medium_dark',
+      name: 'Piel Medio-Oscuro',
+      description: 'Tono de piel medio-oscuro',
+      price: 0,
+      assetUrl: null,
+      colorValue: '#C68642',
+      default: true,
+      featured: false,
+      active: true,
+    },
+    {
+      id: 'skin_dark',
+      name: 'Piel Oscura',
+      description: 'Tono de piel oscuro',
+      price: 0,
+      assetUrl: null,
+      colorValue: '#8D5524',
+      default: true,
+      featured: false,
+      active: true,
+    },
   ],
 
   // Categoría: Forma de cara
@@ -58,7 +104,26 @@ export const STORE_ITEMS = {
 
   // Categoría: Alias/Apodos
   alias: [
-    // Agregar items aquí
+    {
+      id: 'alias_water_warrior',
+      name: 'Guerrero del Agua',
+      description: 'Apodo épico para los defensores del agua',
+      price: 15,
+      assetUrl: null, // Los aliases no tienen imagen
+      default: false,
+      featured: false,
+      active: true,
+    },
+    {
+      id: 'alias_hydration_hero',
+      name: 'Héroe de la Hidratación',
+      description: 'Para los que siempre se mantienen hidratados',
+      price: 15,
+      assetUrl: null, // Los aliases no tienen imagen
+      default: false,
+      featured: false,
+      active: true,
+    },
   ],
 };
 

@@ -45,6 +45,7 @@ export class StoreItemModel {
       price: item.price || 0,
       assetUrl: item.assetUrl || null,
       asset_url: item.assetUrl || null, // Compatibilidad con código antiguo
+      colorValue: item.colorValue || null, // Para colores de piel (hex/RGB)
       default: item.default || false,
       active: item.active !== undefined ? item.active : true,
       featured: item.featured || false,
@@ -94,6 +95,7 @@ export class StoreItemModel {
       price: item.price || 0,
       assetUrl: item.assetUrl || null,
       asset_url: item.assetUrl || null, // Compatibilidad
+      colorValue: item.colorValue || null, // Para colores de piel (hex/RGB)
       default: item.default || false,
       active: item.active !== undefined ? item.active : true,
       featured: item.featured || false,
@@ -164,6 +166,7 @@ export class StoreItemModel {
       price: item.price || 0,
       assetUrl: item.assetUrl || null,
       asset_url: item.assetUrl || null, // Compatibilidad
+      colorValue: item.colorValue || null, // Para colores de piel (hex/RGB)
       default: item.default || false,
       active: item.active !== undefined ? item.active : true,
       featured: item.featured || false,
