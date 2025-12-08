@@ -1,184 +1,202 @@
 /**
- * Modelo de Item de Tienda para Firestore
+ * Modelo de Item de Tienda
  * 
- * Estructura del documento:
+ * Ahora lee de configuración estática (src/config/store-items.js) en lugar de Firestore.
+ * Las definiciones de items están en código, pero el inventario y personalizaciones
+ * siguen en Firestore.
+ * 
+ * Estructura del item:
  * {
- *   storeItemId: string (auto-generado)
+ *   id: string (ID único del item)
  *   category: string ("skin_color" | "face_shape" | "eyes" | "nose" | "mouth" | "ears" | "hair" | "alias")
  *   name: string
- *   description: string
+ *   description: string (opcional)
  *   price: number (puntos, 0 si es gratis)
  *   assetUrl: string (URL del asset en Firebase Storage)
  *   default: boolean (si es item por defecto/gratis)
  *   active: boolean (si el item está disponible, true por defecto)
  *   featured: boolean (si es item destacado, false por defecto)
- *   createdAt: Timestamp
- *   updatedAt: Timestamp
+ *   storeItemId: string (alias de id para compatibilidad)
  * }
  */
 
-import { db } from '../config/firebase.js';
-import { Timestamp } from 'firebase-admin/firestore';
-
-const COLLECTION_NAME = 'Store_item';
+import { getAllItems, getItemsByCategory, getItemById, VALID_CATEGORIES } from '../config/store-items.js';
 
 export class StoreItemModel {
   /**
-   * Crear un nuevo item de tienda
-   */
-  static async create(itemData) {
-    const itemRef = db.collection(COLLECTION_NAME).doc();
-    const item = {
-      storeItemId: itemRef.id,
-      storeCategoryId: itemData.storeCategoryId || null,
-      category: itemData.category, // Requerido: "skin_color" | "face_shape" | "eyes" | "nose" | "mouth" | "ears" | "hair" | "alias"
-      name: itemData.name,
-      description: itemData.description || null,
-      price: itemData.price || 0,
-      assetUrl: itemData.assetUrl || null,
-      default: itemData.default || false,
-      active: itemData.active !== undefined ? itemData.active : true,
-      featured: itemData.featured || false,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    };
-    
-    await itemRef.set(item);
-    return { id: itemRef.id, ...item };
-  }
-
-  /**
    * Obtener item por ID
+   * @param {string} itemId - ID del item
+   * @returns {object|null} Item encontrado o null
    */
   static async findById(itemId) {
-    const itemDoc = await db.collection(COLLECTION_NAME).doc(itemId).get();
-    
-    if (!itemDoc.exists) {
+    const item = getItemById(itemId);
+    if (!item) {
       return null;
     }
     
-    return { id: itemDoc.id, ...itemDoc.data() };
+    // Agregar campos de compatibilidad
+    return {
+      id: item.id,
+      storeItemId: item.id,
+      storeCategoryId: null, // Ya no se usa
+      category: item.category,
+      name: item.name,
+      description: item.description || null,
+      price: item.price || 0,
+      assetUrl: item.assetUrl || null,
+      asset_url: item.assetUrl || null, // Compatibilidad con código antiguo
+      default: item.default || false,
+      active: item.active !== undefined ? item.active : true,
+      featured: item.featured || false,
+      createdAt: null, // Ya no se usa timestamp
+      updatedAt: null, // Ya no se usa timestamp
+    };
   }
 
   /**
    * Obtener items por categoría
    * Categorías válidas: "skin_color" | "face_shape" | "eyes" | "nose" | "mouth" | "ears" | "hair" | "alias"
+   * @param {string} category - Categoría del item
+   * @param {object} options - Opciones de filtrado
+   * @param {boolean} options.activeOnly - Solo items activos (default: true)
+   * @returns {array} Array de items
    */
   static async findByCategory(category, options = {}) {
-    const { activeOnly = true, includeInactive = false } = options;
+    const { activeOnly = true } = options;
     
-    let query = db
-      .collection(COLLECTION_NAME)
-      .where('category', '==', category);
+    if (!VALID_CATEGORIES.includes(category)) {
+      return [];
+    }
+    
+    let items = getItemsByCategory(category);
     
     // Filtrar solo activos si se solicita
-    if (activeOnly && !includeInactive) {
-      query = query.where('active', '==', true);
-      // Ordenar por precio y nombre (requiere índice compuesto: category, active, price, name)
-      query = query.orderBy('price', 'asc').orderBy('name', 'asc');
-    } else {
-      // Solo ordenar por precio
-      query = query.orderBy('price', 'asc');
+    if (activeOnly) {
+      items = items.filter(item => item.active !== false);
     }
     
-    const snapshot = await query.get();
-    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Ordenar por precio y nombre
+    items.sort((a, b) => {
+      if (a.price !== b.price) {
+        return (a.price || 0) - (b.price || 0);
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
     
-    // Si no se pudo ordenar por nombre en la query, ordenar en memoria
-    if (!activeOnly || includeInactive) {
-      items.sort((a, b) => {
-        if (a.price !== b.price) {
-          return (a.price || 0) - (b.price || 0);
-        }
-        return (a.name || '').localeCompare(b.name || '');
-      });
-    }
-    
-    return items;
+    // Agregar campos de compatibilidad
+    return items.map(item => ({
+      id: item.id,
+      storeItemId: item.id,
+      storeCategoryId: null, // Ya no se usa
+      category: category,
+      name: item.name,
+      description: item.description || null,
+      price: item.price || 0,
+      assetUrl: item.assetUrl || null,
+      asset_url: item.assetUrl || null, // Compatibilidad
+      default: item.default || false,
+      active: item.active !== undefined ? item.active : true,
+      featured: item.featured || false,
+      createdAt: null,
+      updatedAt: null,
+    }));
   }
 
   /**
    * Obtener items por categoría antigua (storeCategoryId) - compatibilidad
+   * @deprecated Usar findByCategory con el nombre de categoría directamente
    */
   static async findByCategoryId(categoryId) {
-    const snapshot = await db
-      .collection(COLLECTION_NAME)
-      .where('storeCategoryId', '==', categoryId)
-      .get();
-    
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Intentar buscar por nombre de categoría si categoryId es un nombre válido
+    if (VALID_CATEGORIES.includes(categoryId)) {
+      return await this.findByCategory(categoryId);
+    }
+    return [];
   }
 
   /**
    * Obtener todos los items
+   * @param {object} options - Opciones de filtrado
+   * @param {boolean} options.activeOnly - Solo items activos (default: true)
+   * @param {number} options.limit - Límite de resultados
+   * @param {string} options.category - Filtrar por categoría
+   * @returns {array} Array de items
    */
   static async findAll(options = {}) {
     const { activeOnly = true, limit = null, category = null } = options;
     
-    let query = db.collection(COLLECTION_NAME);
+    let items = getAllItems();
     
-    // Aplicar filtros
+    // Filtrar por categoría si se especifica
     if (category) {
-      query = query.where('category', '==', category);
-      if (activeOnly) {
-        query = query.where('active', '==', true);
+      items = items.filter(item => item.category === category);
+    }
+    
+    // Filtrar solo activos si se solicita
+    if (activeOnly) {
+      items = items.filter(item => item.active !== false);
+    }
+    
+    // Ordenar por categoría, precio y nombre
+    items.sort((a, b) => {
+      if (a.category !== b.category) {
+        return a.category.localeCompare(b.category);
       }
-      // Ordenar por precio y nombre (requiere índice compuesto)
-      query = query.orderBy('price', 'asc').orderBy('name', 'asc');
-    } else if (activeOnly) {
-      // Solo filtrar por activo, ordenar por categoría y precio
-      query = query.where('active', '==', true);
-      query = query.orderBy('category', 'asc').orderBy('price', 'asc');
-    } else {
-      // Sin filtros, solo ordenar por categoría
-      query = query.orderBy('category', 'asc');
+      if (a.price !== b.price) {
+        return (a.price || 0) - (b.price || 0);
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    
+    // Aplicar límite si se especifica
+    if (limit && limit > 0) {
+      items = items.slice(0, limit);
     }
     
-    if (limit) {
-      query = query.limit(limit);
-    }
-    
-    const snapshot = await query.get();
-    let items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    
-    // Si hay múltiples filtros o necesitamos ordenar por nombre, hacerlo en memoria
-    if (category && activeOnly) {
-      // Ya está ordenado por precio y nombre
-    } else if (!category) {
-      // Ordenar en memoria por precio y nombre dentro de cada categoría
-      items.sort((a, b) => {
-        if (a.category !== b.category) {
-          return a.category.localeCompare(b.category);
-        }
-        if (a.price !== b.price) {
-          return (a.price || 0) - (b.price || 0);
-        }
-        return (a.name || '').localeCompare(b.name || '');
-      });
-    }
-    
-    return items;
+    // Agregar campos de compatibilidad
+    return items.map(item => ({
+      id: item.id,
+      storeItemId: item.id,
+      storeCategoryId: null, // Ya no se usa
+      category: item.category,
+      name: item.name,
+      description: item.description || null,
+      price: item.price || 0,
+      assetUrl: item.assetUrl || null,
+      asset_url: item.assetUrl || null, // Compatibilidad
+      default: item.default || false,
+      active: item.active !== undefined ? item.active : true,
+      featured: item.featured || false,
+      createdAt: null,
+      updatedAt: null,
+    }));
+  }
+
+  /**
+   * Crear un nuevo item de tienda
+   * @deprecated Los items ahora se definen en src/config/store-items.js
+   * Esta función se mantiene solo para compatibilidad pero no hace nada
+   */
+  static async create(itemData) {
+    throw new Error('Los items de tienda ahora se definen en src/config/store-items.js. No se pueden crear dinámicamente.');
   }
 
   /**
    * Actualizar item
+   * @deprecated Los items ahora se definen en src/config/store-items.js
+   * Esta función se mantiene solo para compatibilidad pero no hace nada
    */
   static async update(itemId, updateData) {
-    const itemRef = db.collection(COLLECTION_NAME).doc(itemId);
-    await itemRef.update({
-      ...updateData,
-      updatedAt: Timestamp.now(),
-    });
-    
-    return await this.findById(itemId);
+    throw new Error('Los items de tienda ahora se definen en src/config/store-items.js. Edita el archivo de configuración para actualizar items.');
   }
 
   /**
    * Eliminar item
+   * @deprecated Los items ahora se definen en src/config/store-items.js
+   * Esta función se mantiene solo para compatibilidad pero no hace nada
    */
   static async delete(itemId) {
-    await db.collection(COLLECTION_NAME).doc(itemId).delete();
-    return true;
+    throw new Error('Los items de tienda ahora se definen en src/config/store-items.js. Edita el archivo de configuración para eliminar items.');
   }
 }
 
