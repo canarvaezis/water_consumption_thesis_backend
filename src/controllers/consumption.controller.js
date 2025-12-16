@@ -5,30 +5,97 @@
  */
 
 import { ConsumptionService } from '../services/consumption.service.js';
+import { consumptionDataService } from '../services/consumption-data.service.js';
 import { asyncHandler } from '../middleware/error.middleware.js';
 
 export class ConsumptionController {
   /**
    * Agregar consumo manual
    * POST /api/consumption
+   * 
+   * Formato requerido:
+   * {
+   *   activityName: string,
+   *   faucetTypeName: string,
+   *   duration: { minutes: number, seconds: number },
+   *   householdId?: string (opcional)
+   * }
    */
   static addConsumption = asyncHandler(async (req, res) => {
     const userId = req.user.uid;
-    const { consumptionItemId, faucetTypeId, durationMinutes, householdId } = req.body;
+    const { 
+      activityName,
+      faucetTypeName,
+      duration,
+      householdId 
+    } = req.body;
     
-    const result = await ConsumptionService.addManualConsumption(userId, {
-      consumptionItemId,
-      faucetTypeId,
-      durationMinutes,
-      householdId: householdId || null,
-      sessionDate: new Date(),
-    });
-    
-    res.status(201).json({
-      success: true,
-      message: 'Consumo registrado exitosamente',
-      data: result,
-    });
+    try {
+      const result = await ConsumptionService.addManualConsumption(userId, {
+        activityName,
+        faucetTypeName,
+        duration,
+        householdId: householdId || null,
+        sessionDate: new Date(),
+      });
+      
+      res.status(201).json({
+        success: true,
+        message: 'Consumo registrado exitosamente',
+        data: result,
+      });
+    } catch (error) {
+      // Manejar errores con códigos específicos
+      if (error.code === 'ITEM_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+          error: {
+            code: error.code,
+            provided: activityName,
+            suggestions: error.suggestions || [],
+          },
+        });
+      }
+      
+      if (error.code === 'FAUCET_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+          error: {
+            code: error.code,
+            provided: faucetTypeName,
+          },
+        });
+      }
+      
+      if (error.code === 'INCOMPATIBLE_FAUCET') {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          error: {
+            code: error.code,
+            item: {
+              id: error.item.id,
+              name: error.item.name,
+            },
+            selectedFaucet: {
+              id: error.selectedFaucet.id,
+              name: error.selectedFaucet.name,
+            },
+            compatibleFaucets: error.compatibleFaucets.map(f => ({
+              id: f.id,
+              name: f.name,
+              isRecommended: f.id === error.item.defaultFaucetTypeId,
+              litersPerMinute: f.litersPerMinute,
+            })),
+          },
+        });
+      }
+      
+      // Re-lanzar error para que el middleware de errores lo maneje
+      throw error;
+    }
   });
 
   /**
@@ -57,27 +124,50 @@ export class ConsumptionController {
   /**
    * Actualizar detalle (solo día de hoy)
    * PUT /api/consumption/details/:sessionId/:detailId
+   * 
+   * Acepta:
+   * - { duration: { minutes: number, seconds: number } } (opcional)
+   * - { faucetTypeName: string } (opcional)
    */
   static updateDetail = asyncHandler(async (req, res) => {
     const userId = req.user.uid;
     const { sessionId, detailId } = req.params;
-    const { durationMinutes, faucetTypeId } = req.body;
+    const { duration, faucetTypeName } = req.body;
     
-    const updatedDetail = await ConsumptionService.updateDetail(
-      detailId,
-      sessionId,
-      userId,
-      {
-        durationMinutes,
-        faucetTypeId,
+    try {
+      const updatedDetail = await ConsumptionService.updateDetail(
+        detailId,
+        sessionId,
+        userId,
+        {
+          duration: duration || null,
+          faucetTypeName: faucetTypeName || null,
+        }
+      );
+      
+      res.json({
+        success: true,
+        message: 'Detalle actualizado exitosamente',
+        data: { detail: updatedDetail },
+      });
+    } catch (error) {
+      if (error.code === 'INCOMPATIBLE_FAUCET') {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          error: {
+            code: error.code,
+            compatibleFaucets: error.compatibleFaucets.map(f => ({
+              id: f.id,
+              name: f.name,
+              litersPerMinute: f.litersPerMinute,
+            })),
+          },
+        });
       }
-    );
-    
-    res.json({
-      success: true,
-      message: 'Detalle actualizado exitosamente',
-      data: { detail: updatedDetail },
-    });
+      
+      throw error;
+    }
   });
 
   /**
@@ -180,6 +270,55 @@ export class ConsumptionController {
     res.json({
       success: true,
       data: streakData,
+    });
+  });
+
+  /**
+   * Obtener todos los datos de consumo (items, grifos, categorías)
+   * GET /api/consumption/data
+   */
+  static getConsumptionData = asyncHandler(async (req, res) => {
+    const data = consumptionDataService.getAllData();
+    
+    res.json({
+      success: true,
+      data,
+    });
+  });
+
+  /**
+   * Obtener contexto de un item (grifos compatibles, presets, etc.)
+   * GET /api/consumption/context/:itemId
+   * GET /api/consumption/context?itemName=Baño
+   */
+  static getItemContext = asyncHandler(async (req, res) => {
+    const { itemId } = req.params;
+    const { itemName } = req.query;
+    
+    // Resolver item por ID o nombre
+    let item = null;
+    if (itemId) {
+      item = consumptionDataService.getItemById(itemId);
+    } else if (itemName) {
+      item = consumptionDataService.getItemByName(itemName);
+    }
+    
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: 'Actividad no encontrada',
+        error: {
+          code: 'ITEM_NOT_FOUND',
+          provided: itemId || itemName,
+        },
+      });
+    }
+    
+    const context = consumptionDataService.getItemContext(item.id);
+    
+    res.json({
+      success: true,
+      data: context,
     });
   });
 }

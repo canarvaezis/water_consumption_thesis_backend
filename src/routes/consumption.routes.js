@@ -70,19 +70,40 @@ router.use(authenticateToken);
 router.post(
   '/',
   [
-    body('consumptionItemId')
+    body('activityName')
       .notEmpty()
-      .withMessage('ID de actividad de consumo es requerido')
-      .isString(),
-    body('faucetTypeId')
+      .withMessage('activityName es requerido')
+      .isString()
+      .withMessage('activityName debe ser una cadena de texto'),
+    body('faucetTypeName')
       .notEmpty()
-      .withMessage('ID de tipo de grifo es requerido')
-      .isString(),
-    body('durationMinutes')
+      .withMessage('faucetTypeName es requerido')
+      .isString()
+      .withMessage('faucetTypeName debe ser una cadena de texto'),
+    body('duration')
       .notEmpty()
-      .withMessage('Duración en minutos es requerida')
-      .isFloat({ min: 0.1 })
-      .withMessage('La duración debe ser un número positivo mayor a 0'),
+      .withMessage('duration es requerido')
+      .isObject()
+      .withMessage('duration debe ser un objeto'),
+    body('duration.minutes')
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage('duration.minutes debe ser un número entero mayor o igual a 0'),
+    body('duration.seconds')
+      .optional()
+      .isInt({ min: 0, max: 59 })
+      .withMessage('duration.seconds debe ser un número entero entre 0 y 59'),
+    body().custom((value) => {
+      // Validar que al menos minutos o segundos estén presentes
+      if (!value.duration || (value.duration.minutes === undefined && value.duration.seconds === undefined)) {
+        throw new Error('duration debe tener al menos minutes o seconds');
+      }
+      // Validar que al menos uno sea mayor a 0
+      if ((value.duration.minutes || 0) === 0 && (value.duration.seconds || 0) === 0) {
+        throw new Error('La duración debe ser mayor a 0');
+      }
+      return true;
+    }),
     body('householdId')
       .optional()
       .isString(),
@@ -167,14 +188,35 @@ router.get('/sessions/today', ConsumptionController.getTodaySession);
 router.put(
   '/details/:sessionId/:detailId',
   [
-    body('durationMinutes')
+    body('duration')
       .optional()
-      .isFloat({ min: 0.1 })
-      .withMessage('La duración debe ser un número positivo mayor a 0'),
-    body('faucetTypeId')
+      .isObject()
+      .withMessage('duration debe ser un objeto'),
+    body('duration.minutes')
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage('duration.minutes debe ser un número entero mayor o igual a 0'),
+    body('duration.seconds')
+      .optional()
+      .isInt({ min: 0, max: 59 })
+      .withMessage('duration.seconds debe ser un número entero entre 0 y 59'),
+    body().custom((value) => {
+      // Si se proporciona duration, validar que tenga al menos minutos o segundos
+      if (value.duration) {
+        if (value.duration.minutes === undefined && value.duration.seconds === undefined) {
+          throw new Error('duration debe tener al menos minutes o seconds');
+        }
+        // Validar que al menos uno sea mayor a 0
+        if ((value.duration.minutes || 0) === 0 && (value.duration.seconds || 0) === 0) {
+          throw new Error('La duración debe ser mayor a 0');
+        }
+      }
+      return true;
+    }),
+    body('faucetTypeName')
       .optional()
       .isString()
-      .withMessage('ID de tipo de grifo debe ser una cadena de texto'),
+      .withMessage('faucetTypeName debe ser una cadena de texto'),
     validate,
   ],
   ConsumptionController.updateDetail
@@ -325,6 +367,47 @@ router.get('/statistics', ConsumptionController.getStatistics);
  *                       description: Última fecha en la que se registró consumo
  */
 router.get('/streak', ConsumptionController.getStreak);
+
+/**
+ * @swagger
+ * /api/consumption/data:
+ *   get:
+ *     summary: Obtener todos los datos de consumo (items, grifos, categorías)
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Datos de consumo
+ */
+router.get('/data', ConsumptionController.getConsumptionData);
+
+/**
+ * @swagger
+ * /api/consumption/context/{itemId}:
+ *   get:
+ *     summary: Obtener contexto de un item (grifos compatibles, presets, etc.)
+ *     tags: [Consumption]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: itemId
+ *         schema:
+ *           type: string
+ *         description: ID del item
+ *       - in: query
+ *         name: itemName
+ *         schema:
+ *           type: string
+ *         description: Nombre del item (alternativa a itemId)
+ *     responses:
+ *       200:
+ *         description: Contexto del item
+ *       404:
+ *         description: Item no encontrado
+ */
+router.get('/context/:itemId?', ConsumptionController.getItemContext);
 
 // Items de consumo
 /**

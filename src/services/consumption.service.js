@@ -6,8 +6,6 @@
 
 import { ConsumptionSessionModel } from '../models/consumption-session.model.js';
 import { UserConsumptionDetailModel } from '../models/user-consumption-detail.model.js';
-import { ConsumptionItemModel } from '../models/consumption-item.model.js';
-import { FaucetTypeModel } from '../models/faucet-type.model.js';
 import { UserModel } from '../models/user.model.js';
 import { UserMetricsModel } from '../models/user-metrics.model.js';
 import { UserHouseholdModel } from '../models/user-household.model.js';
@@ -16,7 +14,15 @@ import { WalletTransactionModel } from '../models/wallet-transaction.model.js';
 import { PointsService } from './points.service.js';
 import { GoalsService } from './goals.service.js';
 import { NotificationAlertsService } from './notification-alerts.service.js';
-import { calculateWaterCost, updateConsumptionStreak, getCurrentStreak } from '../utils/water-calculations.utils.js';
+import { consumptionDataService } from './consumption-data.service.js';
+import { 
+  calculateWaterCost, 
+  updateConsumptionStreak, 
+  getCurrentStreak,
+  normalizeDuration,
+  durationToTotalMinutes,
+  validateDuration
+} from '../utils/water-calculations.utils.js';
 import { dateToTimestamp } from '../utils/firestore.utils.js';
 
 export class ConsumptionService {
@@ -59,36 +65,86 @@ export class ConsumptionService {
     return session;
   }
 
+
   /**
    * Agregar consumo manual
+   * 
+   * Formato requerido:
+   * {
+   *   activityName: string,
+   *   faucetTypeName: string,
+   *   duration: { minutes: number, seconds: number }
+   * }
    */
   static async addManualConsumption(userId, detailData) {
     // Validar fecha
     this.validateDateIsToday(detailData.sessionDate || new Date());
     
-    // Validar que el item de actividad existe
-    const item = await ConsumptionItemModel.findById(detailData.consumptionItemId);
-    if (!item) {
-      throw new Error('Item de consumo (actividad) no encontrado');
+    // Validar que se proporcionen los campos requeridos
+    if (!detailData.activityName) {
+      throw new Error('activityName es requerido');
     }
     
-    // Validar que el tipo de grifo existe
-    const faucetType = await FaucetTypeModel.findById(detailData.faucetTypeId);
+    if (!detailData.faucetTypeName) {
+      throw new Error('faucetTypeName es requerido');
+    }
+    
+    if (!detailData.duration) {
+      throw new Error('duration es requerido');
+    }
+    
+    // Resolver item por nombre
+    const item = consumptionDataService.getItemByName(detailData.activityName);
+    if (!item) {
+      const suggestions = consumptionDataService.searchItemsByName(detailData.activityName);
+      const error = new Error('Actividad no encontrada');
+      error.suggestions = suggestions;
+      error.code = 'ITEM_NOT_FOUND';
+      throw error;
+    }
+    
+    // Resolver tipo de grifo por nombre
+    const faucetType = consumptionDataService.getFaucetTypeByName(detailData.faucetTypeName);
     if (!faucetType) {
-      throw new Error('Tipo de grifo no encontrado');
+      const error = new Error('Tipo de grifo no encontrado');
+      error.code = 'FAUCET_NOT_FOUND';
+      throw error;
     }
     
     if (!faucetType.isActive) {
       throw new Error('Tipo de grifo no está activo');
     }
     
-    // Validar duración
-    if (!detailData.durationMinutes || detailData.durationMinutes <= 0) {
-      throw new Error('La duración en minutos debe ser mayor a 0');
+    // Validar compatibilidad item ↔ grifo
+    const compatibility = consumptionDataService.validateItemFaucetCompatibility(item.id, faucetType.id);
+    if (!compatibility.valid) {
+      const error = new Error('El tipo de grifo seleccionado no es compatible con esta actividad');
+      error.code = 'INCOMPATIBLE_FAUCET';
+      error.item = item;
+      error.selectedFaucet = faucetType;
+      error.compatibleFaucets = compatibility.compatibleFaucets;
+      throw error;
     }
     
+    // Normalizar duración
+    let normalizedDuration;
+    try {
+      normalizedDuration = normalizeDuration(detailData.duration);
+    } catch (err) {
+      throw new Error(`Error al procesar duración: ${err.message}`);
+    }
+    
+    // Validar duración
+    const durationValidation = validateDuration(normalizedDuration);
+    if (!durationValidation.valid) {
+      throw new Error(durationValidation.error);
+    }
+    
+    // Convertir a minutos totales
+    const totalMinutes = durationToTotalMinutes(normalizedDuration);
+    
     // Calcular litros automáticamente: duración × consumo del grifo por minuto
-    const calculatedLiters = detailData.durationMinutes * faucetType.litersPerMinute;
+    const calculatedLiters = totalMinutes * faucetType.litersPerMinute;
     
     // Validar pertenencia al hogar si se especifica
     let householdId = null;
@@ -111,10 +167,11 @@ export class ConsumptionService {
     const isFirstDetail = existingDetails.length === 0;
     
     // Crear detalle con litros calculados automáticamente
+    // Guardar IDs en la base de datos (no nombres)
     const detail = await UserConsumptionDetailModel.addDetail(session.id, {
-      consumptionItemId: detailData.consumptionItemId,
-      faucetTypeId: detailData.faucetTypeId,
-      durationMinutes: detailData.durationMinutes,
+      consumptionItemId: item.id,
+      faucetTypeId: faucetType.id,
+      durationMinutes: totalMinutes,
       calculatedLiters: calculatedLiters,
     });
     
@@ -295,10 +352,19 @@ export class ConsumptionService {
     // Calcular total de puntos ganados (registro + bono de racha si aplica)
     const totalPointsEarned = pointsToAward + streakBonusPoints;
     
+    // Obtener categoría del item
+    const category = consumptionDataService.getCategoryById(item.categoryId);
+    
     return { 
       session, 
       detail: {
         ...detail,
+        duration: normalizedDuration, // Incluir minutos y segundos
+        consumptionItem: {
+          id: item.id,
+          name: item.name,
+          category: category ? category.name : null,
+        },
         faucetType: {
           id: faucetType.id,
           name: faucetType.name,
@@ -313,6 +379,10 @@ export class ConsumptionService {
       wallet: {
         balance: updatedWallet?.balance || 0,
       },
+      streak: {
+        current: newStreak,
+        message: newStreak > 0 ? `¡Llevas ${newStreak} día${newStreak > 1 ? 's' : ''} consecutivo${newStreak > 1 ? 's' : ''} registrando!` : null
+      }
     };
   }
 
@@ -402,31 +472,69 @@ export class ConsumptionService {
       : new Date(session.consumptionDate);
     this.validateDateIsToday(sessionDate);
     
-    // Si se actualiza duración o tipo de grifo, recalcular litros
-    let finalUpdateData = { ...updateData };
+    // Obtener el detalle actual
+    const details = await UserConsumptionDetailModel.getDetailsBySessionId(sessionId);
+    const currentDetail = details.find(d => d.id === detailId);
     
-    if (updateData.durationMinutes || updateData.faucetTypeId) {
-      // Obtener el detalle actual
-      const details = await UserConsumptionDetailModel.getDetailsBySessionId(sessionId);
-      const currentDetail = details.find(d => d.id === detailId);
-      
-      if (!currentDetail) {
-        throw new Error('Detalle no encontrado');
-      }
-      
-      // Usar valores actualizados o actuales
-      const durationMinutes = updateData.durationMinutes || currentDetail.durationMinutes;
-      const faucetTypeId = updateData.faucetTypeId || currentDetail.faucetTypeId;
-      
-      // Validar tipo de grifo
-      const faucetType = await FaucetTypeModel.findById(faucetTypeId);
-      if (!faucetType || !faucetType.isActive) {
+    if (!currentDetail) {
+      throw new Error('Detalle no encontrado');
+    }
+    
+    // Obtener item y grifo actuales
+    const item = consumptionDataService.getItemById(currentDetail.consumptionItemId);
+    if (!item) {
+      throw new Error('Item de consumo no encontrado');
+    }
+    
+    // Resolver nuevo tipo de grifo si se actualiza
+    let faucetTypeId = currentDetail.faucetTypeId;
+    if (updateData.faucetTypeName) {
+      const newFaucet = consumptionDataService.getFaucetTypeByName(updateData.faucetTypeName);
+      if (!newFaucet || !newFaucet.isActive) {
         throw new Error('Tipo de grifo no encontrado o no está activo');
       }
       
-      // Recalcular litros
-      finalUpdateData.calculatedLiters = durationMinutes * faucetType.litersPerMinute;
+      // Validar compatibilidad
+      const compatibility = consumptionDataService.validateItemFaucetCompatibility(item.id, newFaucet.id);
+      if (!compatibility.valid) {
+        const error = new Error('El tipo de grifo seleccionado no es compatible con esta actividad');
+        error.code = 'INCOMPATIBLE_FAUCET';
+        error.compatibleFaucets = compatibility.compatibleFaucets;
+        throw error;
+      }
+      
+      faucetTypeId = newFaucet.id;
     }
+    
+    const faucetType = consumptionDataService.getFaucetTypeById(faucetTypeId);
+    
+    // Normalizar y validar duración si se actualiza
+    let totalMinutes = currentDetail.durationMinutes;
+    if (updateData.duration) {
+      let normalizedDuration;
+      try {
+        normalizedDuration = normalizeDuration(updateData.duration);
+      } catch (err) {
+        throw new Error(`Error al procesar duración: ${err.message}`);
+      }
+      
+      const durationValidation = validateDuration(normalizedDuration);
+      if (!durationValidation.valid) {
+        throw new Error(durationValidation.error);
+      }
+      
+      totalMinutes = durationToTotalMinutes(normalizedDuration);
+    }
+    
+    // Recalcular litros
+    const calculatedLiters = totalMinutes * faucetType.litersPerMinute;
+    
+    // Preparar datos de actualización
+    const finalUpdateData = {
+      faucetTypeId: faucetTypeId,
+      durationMinutes: totalMinutes,
+      calculatedLiters: calculatedLiters,
+    };
     
     // Actualizar detalle
     await UserConsumptionDetailModel.update(sessionId, detailId, finalUpdateData);
@@ -435,8 +543,8 @@ export class ConsumptionService {
     await this.recalculateSessionTotals(sessionId);
     
     // Obtener detalle actualizado
-    const details = await UserConsumptionDetailModel.getDetailsBySessionId(sessionId);
-    const updatedDetail = details.find(d => d.id === detailId);
+    const updatedDetails = await UserConsumptionDetailModel.getDetailsBySessionId(sessionId);
+    const updatedDetail = updatedDetails.find(d => d.id === detailId);
     
     return updatedDetail;
   }

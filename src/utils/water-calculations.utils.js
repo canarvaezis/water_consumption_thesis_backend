@@ -210,3 +210,73 @@ export const updateConsumptionStreak = (user, consumptionDate) => {
   };
 };
 
+/**
+ * Normalizar duración a formato estándar (minutos y segundos)
+ * Solo acepta formato: { minutes: number, seconds: number }
+ * 
+ * @param {Object} duration - Duración con minutos y segundos
+ * @returns {Object} - { minutes: number, seconds: number }
+ */
+export const normalizeDuration = (duration) => {
+  if (!duration || typeof duration !== 'object') {
+    throw new Error('Duración debe ser un objeto con minutos y segundos');
+  }
+  
+  if (duration.minutes === undefined && duration.seconds === undefined) {
+    throw new Error('Duración debe tener al menos minutos o segundos');
+  }
+  
+  return {
+    minutes: duration.minutes || 0,
+    seconds: duration.seconds || 0
+  };
+};
+
+/**
+ * Convertir duración (minutos y segundos) a minutos totales (decimal)
+ * 
+ * @param {Object} duration - { minutes: number, seconds: number }
+ * @returns {number} - Minutos totales como decimal
+ */
+export const durationToTotalMinutes = (duration) => {
+  if (!duration || typeof duration.minutes === 'undefined' || typeof duration.seconds === 'undefined') {
+    throw new Error('Duración debe tener minutos y segundos');
+  }
+  return duration.minutes + (duration.seconds / 60);
+};
+
+/**
+ * Validar duración
+ * 
+ * @param {Object} duration - { minutes: number, seconds: number }
+ * @returns {Object} - { valid: boolean, error?: string }
+ */
+export const validateDuration = (duration) => {
+  if (!duration || typeof duration.minutes === 'undefined' || typeof duration.seconds === 'undefined') {
+    return { valid: false, error: 'Duración debe tener minutos y segundos' };
+  }
+  
+  // Validar que los segundos estén en rango 0-59
+  if (duration.seconds < 0 || duration.seconds >= 60) {
+    return { valid: false, error: 'Los segundos deben estar entre 0 y 59' };
+  }
+  
+  // Validar que al menos uno tenga valor > 0
+  if (duration.minutes === 0 && duration.seconds === 0) {
+    return { valid: false, error: 'La duración debe ser mayor a 0' };
+  }
+  
+  // Validar rango máximo razonable (24 horas = 1440 minutos)
+  const totalMinutes = durationToTotalMinutes(duration);
+  if (totalMinutes > 1440) {
+    return { valid: false, error: 'La duración no puede ser mayor a 24 horas' };
+  }
+  
+  // Validar mínimo (al menos 1 segundo)
+  if (totalMinutes < 0.0167) { // 1 segundo = 0.0167 minutos
+    return { valid: false, error: 'La duración debe ser al menos 1 segundo' };
+  }
+  
+  return { valid: true };
+};
+
