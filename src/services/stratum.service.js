@@ -91,6 +91,8 @@ export class StratumService {
 
   /**
    * Obtener tarifas por estrato (información pública)
+   * Tarifas basadas en EMCALI 2021 - Municipio de Cali (ACUEDUCTO)
+   * Nota: Solo se muestran las tarifas variables (sin cargo fijo)
    */
   static async getStratumRates(stratum = null) {
     if (stratum) {
@@ -104,33 +106,50 @@ export class StratumService {
         throw new Error(`Estrato ${stratum} no válido`);
       }
 
-      return {
-        stratum,
-        rates: {
-          block1: rates.block1,
-          block2: rates.block2,
-          block3: rates.block3,
-          fixedCharge: rates.fixedCharge,
-        },
-        description: this.getStratumDescription(stratum),
-      };
+      // Estratos 1, 2, 3: tienen dos bloques
+      if (rates.hasTwoBlocks) {
+        return {
+          stratum,
+          rates: {
+            block1: rates.block1,
+            block2: rates.block2,
+          },
+          description: this.getStratumDescription(stratum),
+        };
+      } 
+      // Estratos 4, 5, 6: precio único
+      else {
+        return {
+          stratum,
+          rates: {
+            pricePerCubicMeter: rates.pricePerCubicMeter,
+          },
+          description: this.getStratumDescription(stratum),
+        };
+      }
     }
 
     // Retornar todas las tarifas
     const allRates = {};
     for (let i = 1; i <= 6; i++) {
-      allRates[i] = {
-        block1: EMCALI_RATES[i].block1,
-        block2: EMCALI_RATES[i].block2,
-        block3: EMCALI_RATES[i].block3,
-        fixedCharge: EMCALI_RATES[i].fixedCharge,
-        description: this.getStratumDescription(i),
-      };
+      const rates = EMCALI_RATES[i];
+      if (rates.hasTwoBlocks) {
+        allRates[i] = {
+          block1: rates.block1,
+          block2: rates.block2,
+          description: this.getStratumDescription(i),
+        };
+      } else {
+        allRates[i] = {
+          pricePerCubicMeter: rates.pricePerCubicMeter,
+          description: this.getStratumDescription(i),
+        };
+      }
     }
 
     return {
       rates: allRates,
-      note: 'Tarifas de Emcali. Los precios están en pesos colombianos por metro cúbico.',
+      note: 'Tarifas de Emcali 2021 - Municipio de Cali (ACUEDUCTO). Los precios están en pesos colombianos por metro cúbico. Solo se calcula el costo variable (sin cargo fijo).',
     };
   }
 

@@ -110,13 +110,13 @@ export class GoalsService {
       return total + (session.totalEstimatedLiters || 0);
     }, 0) || 0;
     
-    // Calcular porcentajes de progreso
+    // Calcular porcentajes de progreso (redondeado a 1 decimal)
     const dailyProgress = goals.dailyGoal 
-      ? Math.min((dailyConsumption / goals.dailyGoal) * 100, 100)
+      ? Math.min(Math.round((dailyConsumption / goals.dailyGoal) * 100 * 10) / 10, 100)
       : null;
     
     const monthlyProgress = goals.monthlyGoal
-      ? Math.min((monthlyConsumption / goals.monthlyGoal) * 100, 100)
+      ? Math.min(Math.round((monthlyConsumption / goals.monthlyGoal) * 100 * 10) / 10, 100)
       : null;
     
     // Calcular días restantes del mes
@@ -140,52 +140,110 @@ export class GoalsService {
       ? monthlyConsumption <= goals.monthlyGoal
       : null;
     
-    // Verificar si es el final del día (después de las 23:00) para otorgar puntos diarios
-    const currentHour = now.getHours();
-    if (dailyAchieved && currentHour >= 23) {
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      await PointsService.awardDailyGoalPoints(userId, today);
-      // Enviar notificación push
-      await NotificationAlertsService.sendDailyGoalAchieved(userId);
-    }
-    
-    // Verificar si es el último día del mes para otorgar puntos mensuales
-    if (monthlyAchieved && daysRemaining === 0) {
-      await PointsService.awardMonthlyGoalPoints(userId, now.getFullYear(), now.getMonth() + 1);
-      // Enviar notificación push
-      await NotificationAlertsService.sendMonthlyGoalAchieved(userId);
-    }
-
-    // Enviar alertas de metas (si aplica)
-    await NotificationAlertsService.sendDailyGoalWarning(userId);
-    await NotificationAlertsService.sendDailyGoalExceeded(userId);
-    await NotificationAlertsService.sendMonthlyGoalWarning(userId);
+    // Ejecutar notificaciones en paralelo sin bloquear la respuesta
+    // (No esperamos estas operaciones para no retrasar la respuesta al frontend)
+    Promise.all([
+      // Verificar si es el final del día (después de las 23:00) para otorgar puntos diarios
+      (async () => {
+        try {
+          const currentHour = now.getHours();
+          if (dailyAchieved && currentHour >= 23) {
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+            await PointsService.awardDailyGoalPoints(userId, today);
+            await NotificationAlertsService.sendDailyGoalAchieved(userId);
+          }
+        } catch (error) {
+          console.error('Error al otorgar puntos diarios:', error);
+        }
+      })(),
+      // Verificar si es el último día del mes para otorgar puntos mensuales
+      (async () => {
+        try {
+          if (monthlyAchieved && daysRemaining === 0) {
+            await PointsService.awardMonthlyGoalPoints(userId, now.getFullYear(), now.getMonth() + 1);
+            await NotificationAlertsService.sendMonthlyGoalAchieved(userId);
+          }
+        } catch (error) {
+          console.error('Error al otorgar puntos mensuales:', error);
+        }
+      })(),
+      // Enviar alertas de metas (si aplica) - PASAR DATOS PARA EVITAR RECURSIÓN
+      (async () => {
+        try {
+          const dailyData = {
+            goal: goals.dailyGoal,
+            consumption: dailyConsumption,
+            percentage: dailyProgress,
+            remaining: goals.dailyGoal 
+              ? Math.max(0, goals.dailyGoal - dailyConsumption)
+              : null,
+            achieved: dailyAchieved,
+          };
+          await NotificationAlertsService.sendDailyGoalWarning(userId, dailyData);
+        } catch (error) {
+          console.error('Error al enviar advertencia de meta diaria:', error);
+        }
+      })(),
+      (async () => {
+        try {
+          const dailyData = {
+            goal: goals.dailyGoal,
+            consumption: dailyConsumption,
+            percentage: dailyProgress,
+            remaining: goals.dailyGoal 
+              ? Math.max(0, goals.dailyGoal - dailyConsumption)
+              : null,
+            achieved: dailyAchieved,
+          };
+          await NotificationAlertsService.sendDailyGoalExceeded(userId, dailyData);
+        } catch (error) {
+          console.error('Error al enviar notificación de meta diaria excedida:', error);
+        }
+      })(),
+      (async () => {
+        try {
+          const monthlyData = {
+            goal: goals.monthlyGoal,
+            consumption: monthlyConsumption,
+            percentage: monthlyProgress,
+            remaining: goals.monthlyGoal
+              ? Math.max(0, goals.monthlyGoal - monthlyConsumption)
+              : null,
+            achieved: monthlyAchieved,
+            daysRemaining,
+          };
+          await NotificationAlertsService.sendMonthlyGoalWarning(userId, monthlyData);
+        } catch (error) {
+          console.error('Error al enviar advertencia de meta mensual:', error);
+        }
+      })(),
+    ]).catch(error => {
+      console.error('Error en notificaciones de metas:', error);
+    });
     
     return {
       goals,
       daily: {
-        consumption: dailyConsumption,
+        consumption: Math.round(dailyConsumption * 10) / 10,
         goal: goals.dailyGoal,
-        progress: dailyProgress,
+        percentage: dailyProgress !== null ? Math.round(dailyProgress * 10) / 10 : null,
         remaining: goals.dailyGoal 
-          ? Math.max(0, goals.dailyGoal - dailyConsumption)
+          ? Math.round(Math.max(0, goals.dailyGoal - dailyConsumption) * 10) / 10
           : null,
-        percentage: dailyProgress,
         achieved: dailyAchieved,
       },
       monthly: {
-        consumption: monthlyConsumption,
+        consumption: Math.round(monthlyConsumption * 10) / 10,
         goal: goals.monthlyGoal,
-        progress: monthlyProgress,
+        percentage: monthlyProgress !== null ? Math.round(monthlyProgress * 10) / 10 : null,
         remaining: goals.monthlyGoal
-          ? Math.max(0, goals.monthlyGoal - monthlyConsumption)
+          ? Math.round(Math.max(0, goals.monthlyGoal - monthlyConsumption) * 10) / 10
           : null,
-        percentage: monthlyProgress,
         achieved: monthlyAchieved,
+        averageDailyConsumption: Math.round(averageDailyConsumption * 10) / 10,
+        projectedMonthlyConsumption: Math.round(projectedMonthlyConsumption * 10) / 10,
         daysRemaining,
-        averageDailyConsumption,
-        projectedMonthlyConsumption,
       },
     };
   }

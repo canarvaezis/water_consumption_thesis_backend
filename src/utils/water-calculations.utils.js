@@ -11,49 +11,43 @@ export const litersToCubicMeters = (liters) => {
 
 /**
  * Calcular costo según tarifas de Emcali por estrato
- * Nota: Estos valores deben actualizarse según las tarifas vigentes
+ * Tarifas basadas en EMCALI 2021 - Municipio de Cali (ACUEDUCTO)
+ * Nota: Solo se calcula el costo variable (sin cargo fijo)
  */
 export const EMCALI_RATES = {
   1: { // Estrato 1
-    block1: { max: 20, price: 0 }, // Primeros 20 m³ son gratuitos
-    block2: { max: 40, price: 2000 }, // 21-40 m³
-    block3: { price: 3000 }, // Más de 40 m³
-    fixedCharge: 5000,
+    block1: { max: 16, price: 751.15 }, // 0-16 m³
+    block2: { price: 2347.35 }, // >16 m³
+    hasTwoBlocks: true,
   },
-  2: {
-    block1: { max: 20, price: 1500 },
-    block2: { max: 40, price: 2500 },
-    block3: { price: 3500 },
-    fixedCharge: 8000,
+  2: { // Estrato 2
+    block1: { max: 16, price: 1619.67 }, // 0-16 m³
+    block2: { price: 2347.35 }, // >16 m³
+    hasTwoBlocks: true,
   },
-  3: {
-    block1: { max: 20, price: 2000 },
-    block2: { max: 40, price: 3000 },
-    block3: { price: 4000 },
-    fixedCharge: 12000,
+  3: { // Estrato 3
+    block1: { max: 16, price: 2323.88 }, // 0-16 m³
+    block2: { price: 2347.35 }, // >16 m³
+    hasTwoBlocks: true,
   },
-  4: {
-    block1: { max: 20, price: 2500 },
-    block2: { max: 40, price: 3500 },
-    block3: { price: 4500 },
-    fixedCharge: 15000,
+  4: { // Estrato 4
+    pricePerCubicMeter: 2347.35, // Precio único por m³
+    hasTwoBlocks: false,
   },
-  5: {
-    block1: { max: 20, price: 3000 },
-    block2: { max: 40, price: 4000 },
-    block3: { price: 5000 },
-    fixedCharge: 18000,
+  5: { // Estrato 5
+    pricePerCubicMeter: 3544.50, // Precio único por m³
+    hasTwoBlocks: false,
   },
-  6: {
-    block1: { max: 20, price: 3500 },
-    block2: { max: 40, price: 4500 },
-    block3: { price: 5500 },
-    fixedCharge: 20000,
+  6: { // Estrato 6
+    pricePerCubicMeter: 3779.23, // Precio único por m³
+    hasTwoBlocks: false,
   },
 };
 
 /**
  * Calcular costo del consumo según estrato y volumen
+ * Solo calcula el costo variable (sin cargo fijo) basado en los litros consumidos
+ * Tarifas según EMCALI 2021 - Municipio de Cali (ACUEDUCTO)
  */
 export const calculateWaterCost = (liters, stratum) => {
   const cubicMeters = litersToCubicMeters(liters);
@@ -63,17 +57,20 @@ export const calculateWaterCost = (liters, stratum) => {
     throw new Error(`Estrato ${stratum} no válido`);
   }
 
-  let cost = rates.fixedCharge; // Cargo fijo
+  let cost = 0;
   
-  if (cubicMeters <= rates.block1.max) {
-    cost += cubicMeters * rates.block1.price;
-  } else if (cubicMeters <= rates.block2.max) {
-    cost += rates.block1.max * rates.block1.price;
-    cost += (cubicMeters - rates.block1.max) * rates.block2.price;
-  } else {
-    cost += rates.block1.max * rates.block1.price;
-    cost += (rates.block2.max - rates.block1.max) * rates.block2.price;
-    cost += (cubicMeters - rates.block2.max) * rates.block3.price;
+  // Estratos 1, 2, 3: tienen dos bloques (0-16 m³ y >16 m³)
+  if (rates.hasTwoBlocks) {
+    if (cubicMeters <= rates.block1.max) {
+      cost = cubicMeters * rates.block1.price;
+    } else {
+      cost = rates.block1.max * rates.block1.price;
+      cost += (cubicMeters - rates.block1.max) * rates.block2.price;
+    }
+  } 
+  // Estratos 4, 5, 6: precio único por m³
+  else {
+    cost = cubicMeters * rates.pricePerCubicMeter;
   }
 
   return Math.round(cost);

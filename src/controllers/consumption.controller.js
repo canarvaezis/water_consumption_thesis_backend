@@ -290,6 +290,9 @@ export class ConsumptionController {
    * Obtener contexto de un item (grifos compatibles, presets, etc.)
    * GET /api/consumption/context/:itemId
    * GET /api/consumption/context?itemName=Baño
+   * 
+   * Nota: Si itemId viene en el path pero no se encuentra por ID,
+   * se intenta buscar por nombre (para soportar nombres en la URL)
    */
   static getItemContext = asyncHandler(async (req, res) => {
     const { itemId } = req.params;
@@ -297,10 +300,22 @@ export class ConsumptionController {
     
     // Resolver item por ID o nombre
     let item = null;
-    if (itemId) {
-      item = consumptionDataService.getItemById(itemId);
-    } else if (itemName) {
+    let providedValue = null;
+    
+    // Priorizar query parameter si existe
+    if (itemName) {
+      providedValue = itemName;
       item = consumptionDataService.getItemByName(itemName);
+    } 
+    // Si hay itemId en el path, intentar primero por ID
+    else if (itemId) {
+      providedValue = itemId;
+      item = consumptionDataService.getItemById(itemId);
+      
+      // Si no se encuentra por ID, intentar por nombre (puede ser un nombre en la URL)
+      if (!item) {
+        item = consumptionDataService.getItemByName(itemId);
+      }
     }
     
     if (!item) {
@@ -309,7 +324,8 @@ export class ConsumptionController {
         message: 'Actividad no encontrada',
         error: {
           code: 'ITEM_NOT_FOUND',
-          provided: itemId || itemName,
+          provided: providedValue,
+          suggestions: consumptionDataService.searchItemsByName(providedValue || ''),
         },
       });
     }

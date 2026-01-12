@@ -45,6 +45,7 @@ export class StoreItemModel {
       price: item.price || 0,
       assetUrl: item.assetUrl || null,
       asset_url: item.assetUrl || null, // Compatibilidad con código antiguo
+      svgContent: item.svgContent || null, // SVG embebido para items que lo requieren
       colorValue: item.colorValue || null, // Para colores de piel (hex/RGB)
       default: item.default || false,
       active: item.active !== undefined ? item.active : true,
@@ -95,6 +96,7 @@ export class StoreItemModel {
       price: item.price || 0,
       assetUrl: item.assetUrl || null,
       asset_url: item.assetUrl || null, // Compatibilidad
+      svgContent: item.svgContent || null, // SVG embebido para items que lo requieren
       colorValue: item.colorValue || null, // Para colores de piel (hex/RGB)
       default: item.default || false,
       active: item.active !== undefined ? item.active : true,
@@ -166,6 +168,7 @@ export class StoreItemModel {
       price: item.price || 0,
       assetUrl: item.assetUrl || null,
       asset_url: item.assetUrl || null, // Compatibilidad
+      svgContent: item.svgContent || null, // SVG embebido para items que lo requieren
       colorValue: item.colorValue || null, // Para colores de piel (hex/RGB)
       default: item.default || false,
       active: item.active !== undefined ? item.active : true,

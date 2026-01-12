@@ -128,5 +128,60 @@ export class ProfileCustomizationController {
       data: inventory,
     });
   });
+
+  /**
+   * Obtener personalización actual del usuario
+   * GET /api/user/profile/customization
+   */
+  static getCustomization = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    
+    const customization = await ProfileCustomizationService.getCurrentCustomization(userId);
+    
+    res.json({
+      success: true,
+      data: customization,
+    });
+  });
+
+  /**
+   * Obtener items de una categoría de personalización
+   * GET /api/user/profile/customization/items/:category
+   */
+  static getCustomizationItems = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { category } = req.params;
+    
+    const items = await ProfileCustomizationService.getItemsByCategory(userId, category);
+    
+    res.json({
+      success: true,
+      data: { items },
+    });
+  });
+
+  /**
+   * Aplicar un item de personalización
+   * PUT /api/user/profile/customization/apply
+   */
+  static applyCustomization = asyncHandler(async (req, res) => {
+    const userId = req.user.uid;
+    const { category, storeItemId } = req.body;
+    
+    if (!category || !storeItemId) {
+      return res.status(400).json({
+        success: false,
+        message: 'category y storeItemId son requeridos',
+      });
+    }
+    
+    const result = await ProfileCustomizationService.applyItem(userId, category, storeItemId);
+    
+    res.json({
+      success: true,
+      message: 'Personalización aplicada exitosamente',
+      data: result,
+    });
+  });
 }
 

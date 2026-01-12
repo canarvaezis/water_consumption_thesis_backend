@@ -55,11 +55,18 @@ export class NotificationAlertsService {
   /**
    * Enviar alerta de meta diaria cerca de excederse (80%+)
    * @param {string} userId - ID del usuario
+   * @param {Object} dailyData - Datos de progreso diario (opcional, para evitar recursión)
    * @returns {Promise<Object|null>} - Resultado del envío o null si no aplica
    */
-  static async sendDailyGoalWarning(userId) {
+  static async sendDailyGoalWarning(userId, dailyData = null) {
     try {
-      const progress = await GoalsService.getGoalsProgress(userId);
+      // Si no se pasan datos, calcularlos (pero esto puede causar recursión si se llama desde getGoalsProgress)
+      let progress;
+      if (dailyData) {
+        progress = { daily: dailyData };
+      } else {
+        progress = await GoalsService.getGoalsProgress(userId);
+      }
       
       if (!progress.daily.goal || progress.daily.percentage < 80) {
         return null; // No aplica
@@ -96,11 +103,18 @@ export class NotificationAlertsService {
   /**
    * Enviar alerta de meta diaria excedida
    * @param {string} userId - ID del usuario
+   * @param {Object} dailyData - Datos de progreso diario (opcional, para evitar recursión)
    * @returns {Promise<Object|null>} - Resultado del envío o null si no aplica
    */
-  static async sendDailyGoalExceeded(userId) {
+  static async sendDailyGoalExceeded(userId, dailyData = null) {
     try {
-      const progress = await GoalsService.getGoalsProgress(userId);
+      // Si no se pasan datos, calcularlos (pero esto puede causar recursión si se llama desde getGoalsProgress)
+      let progress;
+      if (dailyData) {
+        progress = { daily: dailyData };
+      } else {
+        progress = await GoalsService.getGoalsProgress(userId);
+      }
       
       if (!progress.daily.goal || progress.daily.achieved !== false) {
         return null; // No aplica
@@ -131,11 +145,18 @@ export class NotificationAlertsService {
   /**
    * Enviar alerta de meta mensual cerca de excederse (90%+)
    * @param {string} userId - ID del usuario
+   * @param {Object} monthlyData - Datos de progreso mensual (opcional, para evitar recursión)
    * @returns {Promise<Object|null>} - Resultado del envío o null si no aplica
    */
-  static async sendMonthlyGoalWarning(userId) {
+  static async sendMonthlyGoalWarning(userId, monthlyData = null) {
     try {
-      const progress = await GoalsService.getGoalsProgress(userId);
+      // Si no se pasan datos, calcularlos (pero esto puede causar recursión si se llama desde getGoalsProgress)
+      let progress;
+      if (monthlyData) {
+        progress = { monthly: monthlyData };
+      } else {
+        progress = await GoalsService.getGoalsProgress(userId);
+      }
       
       if (!progress.monthly.goal || progress.monthly.percentage < 90) {
         return null; // No aplica

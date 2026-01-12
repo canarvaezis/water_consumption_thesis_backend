@@ -295,10 +295,10 @@ export class ConsumptionService {
         }
       }
 
-      // Enviar alertas de metas (si aplica)
-      await NotificationAlertsService.sendDailyGoalWarning(userId);
-      await NotificationAlertsService.sendDailyGoalExceeded(userId);
-      await NotificationAlertsService.sendMonthlyGoalWarning(userId);
+      // Enviar alertas de metas (si aplica) - pasar datos para evitar recursión
+      await NotificationAlertsService.sendDailyGoalWarning(userId, goalsProgress.daily);
+      await NotificationAlertsService.sendDailyGoalExceeded(userId, goalsProgress.daily);
+      await NotificationAlertsService.sendMonthlyGoalWarning(userId, goalsProgress.monthly);
     } catch (error) {
       // Si hay error al verificar metas, no afectar el flujo principal
       console.error('Error verificando metas para puntos:', error);

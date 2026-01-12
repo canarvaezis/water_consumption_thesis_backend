@@ -524,6 +524,76 @@ router.put(
  */
 router.get('/profile/inventory', ProfileCustomizationController.getInventory);
 
+/**
+ * @swagger
+ * /api/user/profile/customization:
+ *   get:
+ *     summary: Obtener personalización actual del usuario
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/profile/customization', ProfileCustomizationController.getCustomization);
+
+/**
+ * @swagger
+ * /api/user/profile/customization/items/{category}:
+ *   get:
+ *     summary: Obtener items de una categoría de personalización
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: category
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [skin_color, face_shape, eyes, nose, mouth, ears, hair, alias]
+ */
+router.get('/profile/customization/items/:category', ProfileCustomizationController.getCustomizationItems);
+
+/**
+ * @swagger
+ * /api/user/profile/customization/apply:
+ *   put:
+ *     summary: Aplicar un item de personalización
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - category
+ *               - storeItemId
+ *             properties:
+ *               category:
+ *                 type: string
+ *                 enum: [skin_color, face_shape, eyes, nose, mouth, ears, hair, alias]
+ *               storeItemId:
+ *                 type: string
+ */
+router.put(
+  '/profile/customization/apply',
+  [
+    body('category')
+      .notEmpty()
+      .withMessage('category es requerido')
+      .isIn(['skin_color', 'face_shape', 'eyes', 'nose', 'mouth', 'ears', 'hair', 'alias'])
+      .withMessage('category debe ser una categoría válida'),
+    body('storeItemId')
+      .notEmpty()
+      .withMessage('storeItemId es requerido')
+      .isString(),
+    validate,
+  ],
+  ProfileCustomizationController.applyCustomization
+);
+
 // ============================================
 // RUTAS DE ESTRATO
 // ============================================
