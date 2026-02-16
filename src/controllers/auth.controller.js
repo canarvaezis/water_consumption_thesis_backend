@@ -47,6 +47,8 @@ export const register = asyncHandler(async (req, res) => {
       const userDataResponse = {
         userId: uid,
         ...user,
+        streak: 0, // Usuario nuevo, streak inicial es 0
+        consumptionStreak: 0, // Alias para compatibilidad
         createdAt: user.createdAt?.toDate 
           ? user.createdAt.toDate() 
           : user.createdAt,
@@ -125,6 +127,8 @@ export const register = asyncHandler(async (req, res) => {
     const userDataResponse = {
       userId: uid,
       ...user,
+      streak: 0, // Usuario nuevo, streak inicial es 0
+      consumptionStreak: 0, // Alias para compatibilidad
       createdAt: user.createdAt?.toDate 
         ? user.createdAt.toDate() 
         : user.createdAt,
@@ -234,6 +238,8 @@ export const login = asyncHandler(async (req, res) => {
     const userData = {
       uid,
       ...user,
+      streak: streakData.streak, // Agregar streak directamente en user para fácil acceso
+      consumptionStreak: streakData.streak, // Alias para compatibilidad
       createdAt: user.createdAt?.toDate 
         ? user.createdAt.toDate() 
         : user.createdAt,
@@ -340,6 +346,8 @@ export const getProfile = asyncHandler(async (req, res) => {
   const userData = {
     uid: req.user.uid,
     ...user,
+    streak: streakData.streak, // Agregar streak directamente en user para fácil acceso
+    consumptionStreak: streakData.streak, // Alias para compatibilidad
     createdAt: user.createdAt?.toDate 
       ? user.createdAt.toDate() 
       : user.createdAt,

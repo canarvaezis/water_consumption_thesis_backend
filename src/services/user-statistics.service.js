@@ -71,19 +71,20 @@ export class UserStatisticsService {
     let averageDailyLiters = 0;
     let averageDailyCost = 0;
     
+    // Calcular días transcurridos del mes actual
+    const currentDay = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const daysElapsed = currentDay > 0 ? currentDay : 1; // Días que han pasado del mes actual
+    
     if (totalLiters > 0) {
       if (user.stratum === null || user.stratum === undefined) {
         throw new Error('El estrato del usuario no está configurado. Por favor, configure su estrato antes de ver estadísticas.');
       }
       totalCost = calculateWaterCost(totalLiters, user.stratum);
       
-      // Calcular promedio diario del mes
-      const currentDay = now.getDate();
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const daysWithData = currentDay > 0 ? currentDay : 1;
-      
-      averageDailyLiters = totalLiters / daysWithData;
-      averageDailyCost = totalCost / daysWithData;
+      // Promedio diario del mes actual = Suma de litros consumidos / Días del mes que han pasado
+      averageDailyLiters = totalLiters / daysElapsed;
+      averageDailyCost = totalCost / daysElapsed;
     }
     
     return {
@@ -92,11 +93,12 @@ export class UserStatisticsService {
       year: now.getFullYear(),
       totalLiters: Math.round(totalLiters * 100) / 100,
       totalCost: Math.round(totalCost * 100) / 100,
-      averageDailyLiters: Math.round(averageDailyLiters * 100) / 100,
-      averageDailyCost: Math.round(averageDailyCost * 100) / 100,
-      daysWithConsumption: sessions.length,
-      currentDay: now.getDate(),
-      daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
+      averageDailyLiters: Math.round(averageDailyLiters * 100) / 100, // Promedio diario del mes actual
+      averageDailyCost: Math.round(averageDailyCost * 100) / 100, // Promedio diario de costo del mes actual
+      daysWithConsumption: sessions.length, // Días con registros de consumo
+      currentDay: currentDay, // Día actual del mes
+      daysElapsed: daysElapsed, // Días transcurridos del mes
+      daysInMonth: daysInMonth, // Total de días del mes
     };
   }
 
@@ -147,9 +149,11 @@ export class UserStatisticsService {
   }
 
   /**
-   * Obtener promedio mensual del usuario (basado en todos los meses con registros)
+   * Obtener promedio mensual global del usuario (basado en todos los meses con registros)
+   * Fórmula: Suma de litros de todos los meses / Cantidad de meses con registros
+   * 
    * @param {string} userId - ID del usuario
-   * @returns {Promise<Object>} Promedio mensual del usuario
+   * @returns {Promise<Object>} Promedio mensual global del usuario
    */
   static async getAverageMonthlyConsumption(userId) {
     // Obtener todas las sesiones del usuario
@@ -227,16 +231,17 @@ export class UserStatisticsService {
     });
     
     const totalMonths = monthlyStats.length;
+    // Promedio global mensual = Suma de litros de todos los meses / Cantidad de meses con registros
     const averageMonthlyLiters = totalMonths > 0 ? totalMonthlyLiters / totalMonths : 0;
     const averageMonthlyCost = totalMonths > 0 ? totalMonthlyCost / totalMonths : 0;
     
     return {
-      averageMonthlyLiters: Math.round(averageMonthlyLiters * 100) / 100,
-      averageMonthlyCost: Math.round(averageMonthlyCost * 100) / 100,
-      totalMonths,
-      totalLiters: Math.round(totalMonthlyLiters * 100) / 100,
-      totalCost: Math.round(totalMonthlyCost * 100) / 100,
-      monthlyData: monthlyStats,
+      averageMonthlyLiters: Math.round(averageMonthlyLiters * 100) / 100, // Promedio global mensual (litros)
+      averageMonthlyCost: Math.round(averageMonthlyCost * 100) / 100, // Promedio global mensual (costo)
+      totalMonths, // Cantidad de meses con registros
+      totalLiters: Math.round(totalMonthlyLiters * 100) / 100, // Suma total de litros de todos los meses
+      totalCost: Math.round(totalMonthlyCost * 100) / 100, // Suma total de costos de todos los meses
+      monthlyData: monthlyStats, // Datos detallados por mes
     };
   }
 
