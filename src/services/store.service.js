@@ -58,7 +58,8 @@ export class StoreService {
     return items.map(item => ({
       id: item.id,
       storeItemId: item.storeItemId || item.id,
-      storeCategoryId: item.storeCategoryId,
+      categoryId: item.categoryId || item.storeCategoryId,
+      storeCategoryId: item.storeCategoryId || item.categoryId,
       category: item.category,
       name: item.name,
       description: item.description,
@@ -91,7 +92,8 @@ export class StoreService {
     return {
       id: item.id,
       storeItemId: item.storeItemId || item.id,
-      storeCategoryId: item.storeCategoryId,
+      categoryId: item.categoryId || item.storeCategoryId,
+      storeCategoryId: item.storeCategoryId || item.categoryId,
       category: item.category,
       name: item.name,
       description: item.description,
@@ -135,7 +137,8 @@ export class StoreService {
     return items.map(item => ({
       id: item.id,
       storeItemId: item.storeItemId || item.id,
-      storeCategoryId: item.storeCategoryId,
+      categoryId: item.categoryId || item.storeCategoryId,
+      storeCategoryId: item.storeCategoryId || item.categoryId,
       category: item.category,
       name: item.name,
       description: item.description,
@@ -308,6 +311,8 @@ export class StoreService {
         return {
           inventoryId: invItem.id,
           storeItemId: item.id,
+          categoryId: item.categoryId || item.storeCategoryId,
+          storeCategoryId: item.storeCategoryId || item.categoryId,
           name: item.name,
           description: item.description,
           category: item.category,
@@ -380,7 +385,8 @@ export class StoreService {
     return featuredItems.map(item => ({
       id: item.id,
       storeItemId: item.storeItemId || item.id,
-      storeCategoryId: item.storeCategoryId,
+      categoryId: item.categoryId || item.storeCategoryId,
+      storeCategoryId: item.storeCategoryId || item.categoryId,
       category: item.category,
       name: item.name,
       description: item.description,

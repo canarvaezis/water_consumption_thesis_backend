@@ -22,6 +22,20 @@
 
 import { getAllItems, getItemsByCategory, getItemById, VALID_CATEGORIES } from '../config/store-items.js';
 
+/**
+ * Mapeo de categorías en inglés a sus nombres en español
+ */
+const CATEGORY_NAME_MAP = {
+  face_shape: 'Forma de Cara',
+  eyes: 'Ojos',
+  nose: 'Nariz',
+  mouth: 'Boca',
+  ears: 'Orejas',
+  hair: 'Pelo',
+  skin_color: 'Color de Piel',
+  alias: 'Alias',
+};
+
 export class StoreItemModel {
   /**
    * Obtener item por ID
@@ -35,10 +49,13 @@ export class StoreItemModel {
     }
     
     // Agregar campos de compatibilidad
+    const categoryName = CATEGORY_NAME_MAP[item.category] || item.category;
+    
     return {
       id: item.id,
       storeItemId: item.id,
-      storeCategoryId: null, // Ya no se usa
+      categoryId: categoryName,
+      storeCategoryId: categoryName,
       category: item.category,
       name: item.name,
       description: item.description || null,
@@ -86,10 +103,13 @@ export class StoreItemModel {
     });
     
     // Agregar campos de compatibilidad
+    const categoryName = CATEGORY_NAME_MAP[category] || category;
+    
     return items.map(item => ({
       id: item.id,
       storeItemId: item.id,
-      storeCategoryId: null, // Ya no se usa
+      categoryId: categoryName,
+      storeCategoryId: categoryName,
       category: category,
       name: item.name,
       description: item.description || null,
@@ -158,24 +178,29 @@ export class StoreItemModel {
     }
     
     // Agregar campos de compatibilidad
-    return items.map(item => ({
-      id: item.id,
-      storeItemId: item.id,
-      storeCategoryId: null, // Ya no se usa
-      category: item.category,
-      name: item.name,
-      description: item.description || null,
-      price: item.price || 0,
-      assetUrl: item.assetUrl || null,
-      asset_url: item.assetUrl || null, // Compatibilidad
-      svgContent: item.svgContent || null, // SVG embebido para items que lo requieren
-      colorValue: item.colorValue || null, // Para colores de piel (hex/RGB)
-      default: item.default || false,
-      active: item.active !== undefined ? item.active : true,
-      featured: item.featured || false,
-      createdAt: null,
-      updatedAt: null,
-    }));
+    return items.map(item => {
+      const categoryName = CATEGORY_NAME_MAP[item.category] || item.category;
+      
+      return {
+        id: item.id,
+        storeItemId: item.id,
+        categoryId: categoryName,
+        storeCategoryId: categoryName,
+        category: item.category,
+        name: item.name,
+        description: item.description || null,
+        price: item.price || 0,
+        assetUrl: item.assetUrl || null,
+        asset_url: item.assetUrl || null, // Compatibilidad
+        svgContent: item.svgContent || null, // SVG embebido para items que lo requieren
+        colorValue: item.colorValue || null, // Para colores de piel (hex/RGB)
+        default: item.default || false,
+        active: item.active !== undefined ? item.active : true,
+        featured: item.featured || false,
+        createdAt: null,
+        updatedAt: null,
+      };
+    });
   }
 
   /**
