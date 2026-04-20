@@ -1,6 +1,5 @@
 name: CI/CD - OpeMay Backend (Node + Docker + AWS EC2)
 
-
 on:
   push:
     branches: [ main ]
