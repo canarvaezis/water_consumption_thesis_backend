@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log*
+.git
+.github
+coverage
+.env
+.env.*
+*.md
+src/__tests__
+jest.config.js
+config/firebase-service-account.json

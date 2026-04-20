@@ -8,9 +8,10 @@ import logger from '../utils/logger.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Ruta al archivo de credenciales de Firebase
-// El archivo está en la carpeta config/ en la raíz del proyecto
-const firebaseServiceAccountPath = join(__dirname, '../../config/firebase-service-account.json');
+// Ruta al archivo de credenciales: en Docker/EC2 suele inyectarse con FIREBASE_KEY_PATH
+const firebaseServiceAccountPath =
+  process.env.FIREBASE_KEY_PATH ||
+  join(__dirname, '../../config/firebase-service-account.json');
 
 // Leer el archivo JSON de la cuenta de servicio
 let firebaseConfig;
