@@ -53,5 +53,5 @@ jobs:
               -e CORS_ORIGIN=* \
               -e FIREBASE_KEY_PATH=/app/firebase-key.json \
               -v /home/ec2-user/secrets/firebase-key.json:/app/firebase-key.json \
-              -p 43263:43263 \
+              -p 127.0.0.1:43263:43263 \
               canarvaezis/seminario_asiaticas_opemay_backend:latest
