@@ -37,23 +37,21 @@ jobs:
           script: |
             echo "🚀 Desplegando nueva versión en EC2..."
 
-            # Descargar última imagen
             docker pull canarvaezis/seminario_asiaticas_opemay_backend:latest
 
-            # Detener y eliminar contenedor previo si existe
             docker stop seminario_backend || true
             docker rm seminario_backend || true
 
-            # Limpiar imágenes viejas
             docker image prune -f
 
-            # Ejecutar nuevo contenedor con las variables y volumen necesarios
             docker run -d \
               --name seminario_backend \
               --restart always \
               -e NODE_ENV=production \
               -e PORT=8080 \
-              -e FIREBASE_KEY_PATH=/home/ec2-user/secrets/firebase-key.json \
-              -v /home/ec2-user/secrets/firebase-key.json:/home/ec2-user/secrets/firebase-key.json \
+              -e VERSION=1.49.2 \
+              -e CORS_ORIGIN=* \
+              -e FIREBASE_KEY_PATH=/app/firebase-key.json \
+              -v /home/ec2-user/secrets/firebase-key.json:/app/firebase-key.json \
               -p 80:8080 \
               canarvaezis/seminario_asiaticas_opemay_backend:latest
