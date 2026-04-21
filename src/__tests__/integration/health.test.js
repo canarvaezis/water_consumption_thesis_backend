@@ -13,9 +13,9 @@ describe('Health Check', () => {
     done();
   });
 
-  it('GET /health debería retornar estado OK', async () => {
+  it('GET /api/health debería retornar estado OK', async () => {
     const response = await request(app)
-      .get('/health')
+      .get('/api/health')
       .expect(200);
 
     expect(response.body.status).toBe('OK');

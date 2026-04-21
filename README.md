@@ -156,7 +156,7 @@ Puedes ver todos los endpoints, probarlos directamente desde el navegador y ver 
 
 #### Salud del Servidor
 
-- `GET /health` - Verificar estado del servidor
+- `GET /api/health` - Verificar estado del servidor
 
 ## Documentación Adicional
 
@@ -175,7 +175,7 @@ Puedes ver todos los endpoints, probarlos directamente desde el navegador y ver 
 
 ## Notas Importantes
 
-- Todas las rutas (excepto `/health`, `/api/auth/register` y `/api/auth/login`) requieren autenticación mediante token Bearer
+- Todas las rutas (excepto `/api/health`, `/api/auth/register` y `/api/auth/login`) requieren autenticación mediante token Bearer
 - El token se debe enviar en el header: `Authorization: Bearer <token>`
 - Los consumos solo se pueden modificar el día actual
 - Un usuario solo puede pertenecer a una familia a la vez

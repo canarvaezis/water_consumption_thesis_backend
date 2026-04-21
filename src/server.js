@@ -97,7 +97,7 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 // Ruta de salud
 /**
  * @swagger
- * /health:
+ * /api/health:
  *   get:
  *     summary: Verificar estado del servidor
  *     tags: [Health]
@@ -119,7 +119,7 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
  *                   type: string
  *                   format: date-time
  */
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     message: 'Servidor funcionando correctamente',
