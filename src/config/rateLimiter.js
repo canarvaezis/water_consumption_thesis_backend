@@ -53,18 +53,20 @@ export const authLimiter = rateLimit({
 
 /**
  * Rate limiter para registro de usuarios
- * 3 registros por hora por IP
- * Previene creación masiva de cuentas
+ * Cuenta solo por IP (no por email ni cuerpo de la petición).
+ * Ventana: 10 s — al superar el máximo, se puede volver a intentar cuando termine esa ventana.
  */
 export const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
-  max: 3, // Solo 3 registros por hora
+  windowMs: 10 * 1000, // 10 segundos
+  max: 10, // hasta 10 intentos de registro por IP por ventana
   message: {
     success: false,
-    message: 'Demasiados intentos de registro. Por favor intenta de nuevo más tarde.',
+    message:
+      'Demasiados intentos de registro desde esta IP. Espera unos segundos e inténtalo de nuevo.',
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => req.ip || req.socket?.remoteAddress || 'unknown',
 });
 
 /**

@@ -25,8 +25,7 @@ export const validate = (req, res, next) => {
 export const validators = {
   email: body('email')
     .isEmail()
-    .withMessage('Debe ser un email válido')
-    .normalizeEmail(),
+    .withMessage('Debe ser un email válido'),
 
   password: body('password')
     .isLength({ min: 6 })
